@@ -1,0 +1,5 @@
+if [ ! -f ./data/customer_reviews_1998.csv ]; then
+    cd ./data
+    curl -L http://examples.citusdata.com/customer_reviews_1998.csv.gz > customer_reviews_1998.csv.gz
+    gzip -d customer_reviews_1998.csv
+fi

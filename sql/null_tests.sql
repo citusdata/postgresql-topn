@@ -1,0 +1,43 @@
+DROP TABLE IF EXISTS jsonb_table;
+CREATE TABLE jsonb_table(
+    jsonb_column jsonb
+);
+CREATE TABLE text_table(
+    text_column text
+);
+
+do
+$$
+declare
+  i record;
+begin
+  for i in 1..10 loop
+    Insert into jsonb_table values(NULL);
+  end loop;
+end;
+$$
+;
+
+do
+$$
+declare
+  i record;
+begin
+  for i in 1..10 loop
+    Insert into text_table values(NULL);
+  end loop;
+end;
+$$
+;
+insert into jsonb_table SELECT topn_add(NULL, 'SA');
+insert into jsonb_table SELECT topn_union(NULL, '{}'::jsonb);
+insert into jsonb_table SELECT topn_union('{}'::jsonb, NULL);
+insert into jsonb_table SELECT topn_union(NULL, NULL);
+insert into jsonb_table SELECT topn_union('{}'::jsonb, '{}'::jsonb);
+insert into jsonb_table SELECT topn_add_agg(text_column) FROM text_table;
+select topn_union_agg(jsonb_column) from jsonb_table;
+
+insert into text_table VALUES ('''''""\\');
+
+insert into jsonb_table SELECT topn_add_agg(text_column) FROM text_table;
+select (topn(topn_union_agg(jsonb_column),2)).* from jsonb_table;
