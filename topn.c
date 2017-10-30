@@ -510,8 +510,6 @@ topn_pack(PG_FUNCTION_ARGS)
 		else
 		{
 			jsonb = MaterializeAggStateToJsonb(topnTrans);
-			hash_destroy(topnTrans->hashTable);
-			pfree(topnTrans);
 		}
 	}
 	else
@@ -878,8 +876,9 @@ InitialiseTopnHashTable(TopnAggState *stateTopn)
 	memset(&hashInfo, 0, sizeof(hashInfo));
 	hashInfo.keysize = MAX_KEYSIZE;
 	hashInfo.entrysize = sizeof(FrequentTopnItem);
+	hashInfo.hcxt = CurrentMemoryContext;
 	stateTopn->hashTable = hash_create("Item Frequency Map", hashTableSize, &hashInfo,
-									   HASH_ELEM);
+									   HASH_ELEM | HASH_CONTEXT);
 }
 
 
