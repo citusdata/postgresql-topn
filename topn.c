@@ -120,7 +120,6 @@ static void IncreaseItemFrequency(FrequentTopnItem *item, Frequency amount);
 static void InsertPairs(FrequentTopnItem *item, StringInfo jsonbStr);
 static Jsonb * jsonb_from_cstring(char *json, int len);
 static size_t checkStringLen(size_t len);
-static void UndoEscapeJson(StringInfo buf, const char *str);
 
 /*
  * shared library initialization function which is used to define the
@@ -681,77 +680,6 @@ compareFrequentTopnItem(const void *item1, const void *item2)
 
 
 /*
- * UndoEscapeJson basically reverts what escape_json function does.
- */
-static void
-UndoEscapeJson(StringInfo buf, const char *str)
-{
-	const char *p;
-
-	for (p = str; *p; p++)
-	{
-		switch (*p)
-		{
-			case '\b':
-			{
-				appendStringInfoString(buf, "b");
-				break;
-			}
-
-			case '\f':
-			{
-				appendStringInfoString(buf, "f");
-				break;
-			}
-
-			case '\n':
-			{
-				appendStringInfoString(buf, "n");
-				break;
-			}
-
-			case '\r':
-			{
-				appendStringInfoString(buf, "r");
-				break;
-			}
-
-			case '\t':
-			{
-				appendStringInfoString(buf, "t");
-				break;
-			}
-
-			case '"':
-			{
-				appendStringInfoString(buf, "\"");
-				break;
-			}
-
-			case '\\':
-			{
-				appendStringInfoString(buf, "\\");
-				break;
-			}
-
-			default:
-			{
-				if ((unsigned char) *p < ' ')
-				{
-					appendStringInfo(buf, "\\u%04x", (int) *p);
-				}
-				else
-				{
-					appendStringInfoCharMacro(buf, *p);
-				}
-				break;
-			}
-		}
-	}
-}
-
-
-/*
  * topnGetDatum converts the FrequentTopnItem passed to it into its datum
  * representation. To do this, the function first creates the heap tuple from
  * the topn key and value. Then, the function converts the heap tuple
@@ -763,16 +691,13 @@ topnGetDatum(FrequentTopnItem *topnItem, TupleDesc tupleDescriptor)
 	Datum values[2];
 	bool isNulls[2];
 	HeapTuple topnTuple = NULL;
-	StringInfo jText = NULL;
 	Datum topnDatum = 0;
 
 	memset(values, 0, sizeof(values));
 	memset(isNulls, false, sizeof(isNulls));
 
-	jText = makeStringInfo();
-	UndoEscapeJson(jText, topnItem->key);
 
-	values[0] = CStringGetTextDatum(jText->data);
+	values[0] = CStringGetTextDatum(topnItem->key);
 	values[1] = Int64GetDatum((Frequency) topnItem->frequency);
 
 	topnTuple = heap_form_tuple(tupleDescriptor, values, isNulls);

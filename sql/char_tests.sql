@@ -16,8 +16,8 @@ SELECT topn_add_agg(text_column)
 FROM values_table;
 
 INSERT INTO values_table
-VALUES ('"""""'), ('\\\\\\'), (''''), ('''""\t'),
-      ('''""\t+++---  <>?//#$%^&*()_+!@/t');
+VALUES (E'"""""'), (E'\\\\\\'), (E''''), (E'''""\t'),
+      (E'''""\t+++---  <>?//#$%^&*()_+!@/t');
 
 INSERT INTO jsonb_table
 SELECT topn_add_agg(text_column)
@@ -175,4 +175,25 @@ SELECT topn_add_agg(text_column)
 FROM values_table;
 
 SELECT (topn(topn_union_agg(jsonb_column), 50)).*
+FROM jsonb_table;
+
+INSERT INTO values_table 
+VALUES (E'\b\f\t\\''\"'),(E'""\\\""\bb\tt\ff');
+
+INSERT INTO jsonb_table 
+SELECT topn_add_agg(text_column) 
+FROM values_table;
+
+SELECT (topn(topn_union_agg(jsonb_column),50)).* 
+FROM jsonb_table;
+
+INSERT INTO values_table 
+SELECT (topn(topn_union_agg(jsonb_column),10)).item 
+FROM jsonb_table;
+
+INSERT INTO jsonb_table 
+SELECT topn_add_agg(text_column) 
+FROM values_table;
+
+SELECT (topn(topn_union_agg(jsonb_column),100)).* 
 FROM jsonb_table;

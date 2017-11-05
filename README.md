@@ -115,19 +115,20 @@ create table popular_products
 SELECT create_distributed_table('popular_products', 'year');
 ```
 
-```sh
+```SQL
 -- Create different summaries by grouping the reviews according to
 -- their year and month, and copy into distributed table
 
-psql -d postgres -c "COPY (select
-  topn_add_agg(product_id),
-  extract(year from review_date) as year,
-  extract(month from review_date) as month
-from
-  customer_reviews
-group by
-  year,
-  month) TO STDOUT" | psql -d postgres -c "COPY popular_products FROM STDIN"
+insert into popular_products
+    select
+        topn_add_agg(product_id),
+        extract(year from review_date) as year,
+        extract(month from review_date) as month
+    from
+        customer_reviews
+    group by
+        year,
+        month;
 ```
 
 ```SQL
