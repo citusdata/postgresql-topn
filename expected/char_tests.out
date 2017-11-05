@@ -199,8 +199,6 @@ FROM jsonb_table;
  \\\                                       |         3
 (20 rows)
 
-<<<<<<< HEAD
-=======
 INSERT INTO values_table 
 VALUES (E'\b\f\t\\''\"'),(E'""\\\""\bb\tt\ff');
 INSERT INTO jsonb_table 
@@ -268,4 +266,3 @@ FROM jsonb_table;
  \x08\x0C        \'"                       |         2
 (22 rows)
 
->>>>>>> 9cfb07c... fixes the escape

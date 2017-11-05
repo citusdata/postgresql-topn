@@ -176,8 +176,6 @@ FROM values_table;
 
 SELECT (topn(topn_union_agg(jsonb_column), 50)).*
 FROM jsonb_table;
-<<<<<<< HEAD
-=======
 
 INSERT INTO values_table 
 VALUES (E'\b\f\t\\''\"'),(E'""\\\""\bb\tt\ff');
@@ -199,5 +197,3 @@ FROM values_table;
 
 SELECT (topn(topn_union_agg(jsonb_column),100)).* 
 FROM jsonb_table;
-
->>>>>>> 9cfb07c... fixes the escape
