@@ -5,7 +5,7 @@ EXTENSION = topn
 DATA =	topn--2.0.0.sql
 ##README??
 
-REGRESS = add_agg union_agg char_tests null_tests add_union_tests copy_data customer_reviews_query
+REGRESS = add_agg union_agg char_tests null_tests add_union_tests copy_data customer_reviews_query join_tests
 
 EXTRA_CLEAN += -r $(RPM_BUILD_ROOT)
 
