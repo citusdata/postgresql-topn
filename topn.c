@@ -112,7 +112,7 @@ static TopnAggState * CreateTopnAggState(void);
 static void MergeJsonbIntoTopnAggState(Jsonb *jsonb, TopnAggState *topn);
 static int compareFrequentTopnItem(const void *item1, const void *item2);
 static Datum topnGetDatum(FrequentTopnItem *topnItem, TupleDesc tupleDescriptor);
-static void PruneHashTable(HTAB *hashTable);
+static void PruneHashTable(HTAB *hashTable, int itemLimit, int numberOfRemainingElements);
 static Jsonb * MaterializeAggStateToJsonb(TopnAggState *topn);
 static void InitialiseTopnHashTable(TopnAggState *stateTopn);
 static void MergeTopn(TopnAggState *left, TopnAggState *right);
@@ -310,11 +310,8 @@ topn_add(PG_FUNCTION_ARGS)
 	else
 	{
 		item->frequency = 1;
-	}
 
-	if (hash_get_num_entries(stateTopn->hashTable) > NumberOfCounters)
-	{
-		PruneHashTable(stateTopn->hashTable);
+		PruneHashTable(stateTopn->hashTable, NumberOfCounters, NumberOfCounters);
 	}
 
 	jsonb = MaterializeAggStateToJsonb(stateTopn);
@@ -343,6 +340,8 @@ topn_union(PG_FUNCTION_ARGS)
 
 	MergeJsonbIntoTopnAggState(jsonbLeft, topn);
 	MergeJsonbIntoTopnAggState(jsonbRight, topn);
+
+	PruneHashTable(topn->hashTable, NumberOfCounters, NumberOfCounters);
 
 	result = MaterializeAggStateToJsonb(topn);
 
@@ -403,12 +402,11 @@ topn_add_trans(PG_FUNCTION_ARGS)
 	}
 	else
 	{
+		int itemLimit = NumberOfCounters * UnionFactor;
+		int remainingElements = hash_get_num_entries(topnTrans->hashTable) / 2;
 		item->frequency = 1;
-		if (hash_get_num_entries(topnTrans->hashTable) > NumberOfCounters *
-			UnionFactor)
-		{
-			PruneHashTable(topnTrans->hashTable);
-		}
+
+		PruneHashTable(topnTrans->hashTable, itemLimit, remainingElements);
 	}
 
 	PG_RETURN_POINTER(topnTrans);
@@ -462,10 +460,7 @@ topn_union_trans(PG_FUNCTION_ARGS)
 		/* always merges the right one into the left */
 		MergeTopn(topnTrans, topnNewItem);
 
-		if (hash_get_num_entries(topnTrans->hashTable) > NumberOfCounters * UnionFactor)
-		{
-			PruneHashTable(topnTrans->hashTable);
-		}
+		/* No need to check the size again since it is already checked in MergeTopn */
 	}
 
 
@@ -508,7 +503,10 @@ topn_pack(PG_FUNCTION_ARGS)
 		}
 		else
 		{
+			PruneHashTable(topnTrans->hashTable, NumberOfCounters, NumberOfCounters);
+
 			jsonb = MaterializeAggStateToJsonb(topnTrans);
+			hash_destroy(topnTrans->hashTable);
 		}
 	}
 	else
@@ -630,6 +628,9 @@ MergeJsonbIntoTopnAggState(Jsonb *jsonb, TopnAggState *topn)
 			jsonbIteratorToken = JsonbIteratorNext(&iterator, &itemJsonbValue, false);
 			if (jsonbIteratorToken == WJB_VALUE && itemJsonbValue.type == jbvNumeric)
 			{
+				int sizeOfHashTable = 0;
+				int remainingElements = 0;
+				int itemLimit = 0;
 				valueNumAsString = numeric_normalize(itemJsonbValue.val.numeric);
 				frequencyValue = atol(valueNumAsString);
 
@@ -644,11 +645,10 @@ MergeJsonbIntoTopnAggState(Jsonb *jsonb, TopnAggState *topn)
 					item->frequency = frequencyValue;
 				}
 
-				if (hash_get_num_entries(topn->hashTable) > NumberOfCounters *
-					UnionFactor)
-				{
-					PruneHashTable(topn->hashTable);
-				}
+				sizeOfHashTable = hash_get_num_entries(topn->hashTable);
+				remainingElements = sizeOfHashTable / 2;
+				itemLimit = NumberOfCounters * UnionFactor;
+				PruneHashTable(topn->hashTable, itemLimit, remainingElements);
 			}
 		}
 	}
@@ -696,7 +696,6 @@ topnGetDatum(FrequentTopnItem *topnItem, TupleDesc tupleDescriptor)
 	memset(values, 0, sizeof(values));
 	memset(isNulls, false, sizeof(isNulls));
 
-
 	values[0] = CStringGetTextDatum(topnItem->key);
 	values[1] = Int64GetDatum((Frequency) topnItem->frequency);
 
@@ -713,9 +712,8 @@ topnGetDatum(FrequentTopnItem *topnItem, TupleDesc tupleDescriptor)
  * than the average of them.
  */
 static void
-PruneHashTable(HTAB *hashTable)
+PruneHashTable(HTAB *hashTable, int itemLimit, int numberOfRemainingElements)
 {
-	int itemCountToSort = 0;
 	Size topnArraySize = 0;
 	int topnIndex = 0;
 	FrequentTopnItem *sortedTopnArray = NULL;
@@ -724,11 +722,15 @@ PruneHashTable(HTAB *hashTable)
 	FrequentTopnItem *currentTask = NULL;
 	FrequentTopnItem *frequentTopnItem = NULL;
 	int index = 0;
+	int hashTableSize = hash_get_num_entries(hashTable);
 
-	itemCountToSort = hash_get_num_entries(hashTable);
+	if (hashTableSize <= itemLimit)
+	{
+		return;
+	}
 
 	/* create an array to copy top-n items and sort them later */
-	topnArraySize = sizeof(FrequentTopnItem) * itemCountToSort;
+	topnArraySize = sizeof(FrequentTopnItem) * hashTableSize;
 	sortedTopnArray = (FrequentTopnItem *) palloc0(topnArraySize);
 
 	hash_seq_init(&status, hashTable);
@@ -736,17 +738,18 @@ PruneHashTable(HTAB *hashTable)
 	while ((currentTask = (FrequentTopnItem *) hash_seq_search(&status)) != NULL)
 	{
 		frequentTopnItem = palloc0(sizeof(FrequentTopnItem));
-		memcpy(frequentTopnItem->key, currentTask->key, sizeof(frequentTopnItem->key));
+		memcpy(frequentTopnItem->key, currentTask->key,
+			   sizeof(frequentTopnItem->key));
 		frequentTopnItem->frequency = currentTask->frequency;
 		sortedTopnArray[topnIndex] = *frequentTopnItem;
 
 		topnIndex++;
 	}
 
-	qsort(sortedTopnArray, itemCountToSort, sizeof(FrequentTopnItem),
+	qsort(sortedTopnArray, hashTableSize, sizeof(FrequentTopnItem),
 		  compareFrequentTopnItem);
 
-	for (index = itemCountToSort / 2; index < itemCountToSort; index++)
+	for (index = numberOfRemainingElements; index < hashTableSize; index++)
 	{
 		FrequentTopnItem *topnItem = &(sortedTopnArray[index]);
 
@@ -826,6 +829,9 @@ MergeTopn(TopnAggState *destination, TopnAggState *source)
 	currentTask = (FrequentTopnItem *) hash_seq_search(&status);
 	while (currentTask != NULL)
 	{
+		int sizeOfHashTable = 0;
+		int remainingElements = 0;
+		int itemLimit = 0;
 		key = currentTask->key;
 
 		item = hash_search(destination->hashTable, (void *) key, HASH_ENTER, &found);
@@ -839,10 +845,11 @@ MergeTopn(TopnAggState *destination, TopnAggState *source)
 			item->frequency = currentTask->frequency;
 		}
 
-		if (hash_get_num_entries(destination->hashTable) > NumberOfCounters * UnionFactor)
-		{
-			PruneHashTable(destination->hashTable);
-		}
+		sizeOfHashTable = hash_get_num_entries(destination->hashTable);
+		itemLimit = NumberOfCounters * UnionFactor;
+		remainingElements = sizeOfHashTable / 2;
+
+		PruneHashTable(destination->hashTable, itemLimit, remainingElements);
 
 		currentTask = (FrequentTopnItem *) hash_seq_search(&status);
 	}

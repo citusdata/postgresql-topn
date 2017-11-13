@@ -2,19 +2,21 @@
 SELECT
     (topn(topn_add_agg(customer_id), 10)).*, (topn(topn_add_agg(product_id), 10)).*
 FROM
-    customer_reviews;
+    customer_reviews
+ORDER BY
+    2 DESC, 4 DESC, 1, 3;
       item      | frequency |    item    | frequency 
 ----------------+-----------+------------+-----------
- ATVPDKIKX0DER  |    331760 | 0613033205 |       576
- AGHIV0V0ON7MO  |       412 | 0671014730 |       576
- ACCH00DRABL57  |       210 | 0671003755 |       576
- A1EDOWER7RO6KZ |       184 | 0743527550 |       576
- A3HF6NQ541X7HW |       181 | 0679460691 |       560
- ALU2IJ2DZD86X  |       177 | 0871136791 |       560
+ ATVPDKIKX0DER  |    331760 | 0743527550 |       576
+ AGHIV0V0ON7MO  |       412 | 0613033205 |       576
+ ACCH00DRABL57  |       210 | 0671014730 |       576
+ A1EDOWER7RO6KZ |       184 | 0671003755 |       576
+ A3HF6NQ541X7HW |       181 | 0871136791 |       560
+ ALU2IJ2DZD86X  |       177 | 0679460691 |       560
  A84J7PUWOC138  |       172 | 0375700757 |       560
  A2FAGKHE7DRFXA |       151 | 0375402926 |       542
- A2JS2OU5SBH1XQ |       149 | 1590073983 |       531
- A3AZ4O4I9S4668 |       146 | 0613221583 |       531
+ A2JS2OU5SBH1XQ |       149 | 0613221583 |       531
+ A3AZ4O4I9S4668 |       146 | 1590073991 |       531
 (10 rows)
 
 SELECT
