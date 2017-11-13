@@ -30,3 +30,25 @@ ORDER BY
     3 DESC,6 DESC, 1, 2, 4, 5
 LIMIT
     20;
+
+SELECT
+    (topn(topn_union(topn_union_agg(customers.topn_add_agg), topn_union_agg(products.topn_add_agg)), 15)).* 
+FROM 
+    (SELECT 
+        product_category, topn_add_agg(customer_id) 
+    FROM 
+        customer_reviews 
+    GROUP BY 
+        1
+    ) customers 
+JOIN 
+    (SELECT 
+        product_category, topn_add_agg(product_id) 
+    FROM 
+        customer_reviews 
+    GROUP BY 
+        1
+    ) products 
+ON true 
+ORDER BY 
+    2 DESC, 1;
