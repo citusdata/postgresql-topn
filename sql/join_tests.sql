@@ -2,7 +2,9 @@
 SELECT
     (topn(topn_add_agg(customer_id), 10)).*, (topn(topn_add_agg(product_id), 10)).*
 FROM
-    customer_reviews;
+    customer_reviews
+ORDER BY
+    2 DESC, 4 DESC, 1, 3;
 
 SELECT
     *
