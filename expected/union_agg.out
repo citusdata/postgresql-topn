@@ -69,6 +69,12 @@ SELECT topn(topn_union_agg(topn_column), 3) from temp_table;
  (3,4)
 (3 rows)
 
+SELECT count(*) FROM (SELECT jsonb_each(topn_union_agg(topn_column)) FROM temp_table) a;
+ count 
+-------
+     6
+(1 row)
+
 INSERT INTO temp_table(topn_column) SELECT topn_add_agg(int_column::TEXT) FROM numbers;
 SELECT topn(topn_union_agg(topn_column), 3) from temp_table;
   topn  
@@ -95,6 +101,12 @@ SELECT topn(topn_union_agg(topn_column), 3) from temp_table;
  (3,20)
 (3 rows)
 
+SELECT count(*) FROM (SELECT jsonb_each(topn_union_agg(topn_column)) FROM temp_table) a;
+ count 
+-------
+     6
+(1 row)
+
 INSERT INTO temp_table(topn_column) SELECT topn_add_agg(text_column) FROM strings;
 SELECT topn(topn_union_agg(topn_column), 3) from temp_table;
     topn    
@@ -116,6 +128,12 @@ SELECT topn(topn_union_agg(topn_column), 3) from temp_table;
  (192.168.0.0/25,40)
 (3 rows)
 
+SELECT count(*) FROM (SELECT jsonb_each(topn_union_agg(topn_column)) FROM temp_table) a;
+ count 
+-------
+     5
+(1 row)
+
 --inet type
 DELETE FROM temp_table;
 INSERT INTO temp_table(topn_column) SELECT topn_add_agg(inet_column::TEXT) FROM inet_table;
@@ -127,4 +145,10 @@ SELECT topn(topn_union_agg(topn_column), 3) from temp_table;
  (192.168.2.1/24,30000)
  (192.168.100.128/23,40)
 (3 rows)
+
+SELECT count(*) FROM (SELECT jsonb_each(topn_union_agg(topn_column)) FROM temp_table) a;
+ count 
+-------
+     5
+(1 row)
 
