@@ -2,19 +2,21 @@
 SELECT
     (topn(topn_add_agg(customer_id), 10)).*, (topn(topn_add_agg(product_id), 10)).*
 FROM
-    customer_reviews;
+    customer_reviews
+ORDER BY
+    2 DESC, 4 DESC, 1, 3;
       item      | frequency |    item    | frequency 
 ----------------+-----------+------------+-----------
- ATVPDKIKX0DER  |    331760 | 0613033205 |       576
- AGHIV0V0ON7MO  |       412 | 0671014730 |       576
- ACCH00DRABL57  |       210 | 0671003755 |       576
- A1EDOWER7RO6KZ |       184 | 0743527550 |       576
- A3HF6NQ541X7HW |       181 | 0679460691 |       560
- ALU2IJ2DZD86X  |       177 | 0871136791 |       560
+ ATVPDKIKX0DER  |    331760 | 0743527550 |       576
+ AGHIV0V0ON7MO  |       412 | 0613033205 |       576
+ ACCH00DRABL57  |       210 | 0671014730 |       576
+ A1EDOWER7RO6KZ |       184 | 0671003755 |       576
+ A3HF6NQ541X7HW |       181 | 0871136791 |       560
+ ALU2IJ2DZD86X  |       177 | 0679460691 |       560
  A84J7PUWOC138  |       172 | 0375700757 |       560
  A2FAGKHE7DRFXA |       151 | 0375402926 |       542
- A2JS2OU5SBH1XQ |       149 | 1590073983 |       531
- A3AZ4O4I9S4668 |       146 | 0613221583 |       531
+ A2JS2OU5SBH1XQ |       149 | 0613221583 |       531
+ A3AZ4O4I9S4668 |       146 | 1590073991 |       531
 (10 rows)
 
 SELECT
@@ -64,4 +66,44 @@ LIMIT
  Children's Books     | ATVPDKIKX0DER |     37233 | Children's Books     | 0064409392 |       153
  Children's Books     | ATVPDKIKX0DER |     37233 | Children's Books     | 0066238501 |       153
 (20 rows)
+
+SELECT
+    (topn(topn_union(topn_union_agg(customers.topn_add_agg), topn_union_agg(products.topn_add_agg)), 15)).* 
+FROM 
+    (SELECT 
+        product_category, topn_add_agg(customer_id) 
+    FROM 
+        customer_reviews 
+    GROUP BY 
+        1
+    ) customers 
+JOIN 
+    (SELECT 
+        product_category, topn_add_agg(product_id) 
+    FROM 
+        customer_reviews 
+    GROUP BY 
+        1
+    ) products 
+ON true 
+ORDER BY 
+    2 DESC, 1;
+     item      | frequency 
+---------------+-----------
+ ATVPDKIKX0DER |  27867840
+ 0613033205    |     48552
+ 0671003755    |     48552
+ 0671014730    |     48552
+ 0743527550    |     48552
+ 0375402926    |     47040
+ 0375700757    |     47040
+ 0679460691    |     47040
+ 0871136791    |     47040
+ 1590073983    |     45360
+ 1590073991    |     45360
+ 0613221583    |     45192
+ 0812550293    |     45192
+ 1575110458    |     45192
+ 0375403477    |     44352
+(15 rows)
 

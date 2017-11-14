@@ -39,6 +39,7 @@ INSERT INTO temp_table(topn_column) SELECT topn_add_agg(int_column::TEXT) FROM n
 INSERT INTO temp_table(topn_column) SELECT topn_add_agg(int_column::TEXT) FROM numbers WHERE int_column = 5;
 INSERT INTO temp_table(topn_column) SELECT topn_add_agg(int_column::TEXT) FROM numbers WHERE int_column = 6;
 SELECT topn(topn_union_agg(topn_column), 3) from temp_table;
+SELECT count(*) FROM (SELECT jsonb_each(topn_union_agg(topn_column)) FROM temp_table) a;
 
 INSERT INTO temp_table(topn_column) SELECT topn_add_agg(int_column::TEXT) FROM numbers;
 SELECT topn(topn_union_agg(topn_column), 3) from temp_table;
@@ -53,6 +54,7 @@ INSERT INTO temp_table(topn_column) SELECT topn_add_agg(text_column) FROM string
 INSERT INTO temp_table(topn_column) SELECT topn_add_agg(text_column) FROM strings WHERE text_column = '5';
 INSERT INTO temp_table(topn_column) SELECT topn_add_agg(text_column) FROM strings WHERE text_column = '6';
 SELECT topn(topn_union_agg(topn_column), 3) from temp_table;
+SELECT count(*) FROM (SELECT jsonb_each(topn_union_agg(topn_column)) FROM temp_table) a;
 
 INSERT INTO temp_table(topn_column) SELECT topn_add_agg(text_column) FROM strings;
 SELECT topn(topn_union_agg(topn_column), 3) from temp_table;
@@ -62,9 +64,11 @@ DELETE FROM temp_table;
 INSERT INTO temp_table(topn_column) SELECT topn_add_agg(cidr_column::TEXT) FROM cidr_table;
 INSERT INTO temp_table(topn_column) SELECT topn_add_agg(cidr_column::TEXT) FROM cidr_table;
 SELECT topn(topn_union_agg(topn_column), 3) from temp_table;
+SELECT count(*) FROM (SELECT jsonb_each(topn_union_agg(topn_column)) FROM temp_table) a;
 
 --inet type
 DELETE FROM temp_table;
 INSERT INTO temp_table(topn_column) SELECT topn_add_agg(inet_column::TEXT) FROM inet_table;
 INSERT INTO temp_table(topn_column) SELECT topn_add_agg(inet_column::TEXT) FROM inet_table;
 SELECT topn(topn_union_agg(topn_column), 3) from temp_table;
+SELECT count(*) FROM (SELECT jsonb_each(topn_union_agg(topn_column)) FROM temp_table) a;
