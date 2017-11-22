@@ -45,7 +45,7 @@ Once you have PostgreSQL, you're ready to build topn. For this, you will need to
 
 You can run the regression tests as the following;
 
-    sudo PATH=/usr/local/pgsql/bin/:$PATH make check
+    sudo make installcheck
 
 Please note that the test dataset `customer_reviews_1998.csv` file is too big so it is handled by git-lfs.
 
