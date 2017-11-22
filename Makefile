@@ -18,10 +18,10 @@ ifndef PG_CONFIG
 PG_CONFIG = pg_config
 endif
 
+REGRESS_PREP = test_data
+
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
 test_data:
 	./test_data_provider
-check: test_data
-	make installcheck
