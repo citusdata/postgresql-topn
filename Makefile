@@ -23,5 +23,4 @@ include $(PGXS)
 
 test_data:
 	./test_data_provider
-check: test_data
-	make installcheck
+check: test_data make installcheck
