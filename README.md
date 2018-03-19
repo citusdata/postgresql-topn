@@ -1,15 +1,17 @@
-# TopN
-`TopN` is a PostgreSQL extension which uses a counter-based algorithm and implements necessary functions for top N approximation.
-## What does top N approximation mean?
-To answer this question, we should first define top N. It is a subset of n elements which are highest ranking according to a given rule in a given set. It can be basically calculated by sorting a set according to a defined rule and taking the n number of elements from the top. Top N analysis is very frequently used in many analytics dashboards. Ranking the events, users, products in a given dimention is pretty much the backbone of most of the dashboards.
+# What is top N?
 
+The definition of top N is a subset of n elements which are highest ranking according to a given rule in a given set. In a daily basis, we encounter top Ns in form of the top scorer players, top musics of the summer, or even IMDB top ranked lists. It can be basically calculated by sorting a set according to a rule and taking the n number of elements from the top. 
+
+# TopN
+Top N analysis is very frequently used in many analytics dashboards. Ranking the events, users, products in a given dimension is pretty much the backbone of most of the dashboards. `TopN` is a PostgreSQL extension which uses a counter-based algorithm and implements necessary functions for top N approximation. By the help of TopN extension, we provide an efficient way for our customers to power their analytics dashboards on top of a distributed database.
+
+## What does top N approximation mean?
 Top N approximation is the technique of finding the top N elements approximately with avoiding certain operations to optimize computing power, memory, and disk usages.
 
 ## Why to use TopN
-Calculating top N elements in a small set is pretty straight forward and easy by just applying count, sort and limit. However, this technique is not much feasible with the current data sizes we encounter in a regular database in today's world. We have recently encountered a use-case that we need to analyse top N elements in a dataset which grows ~6M rows in every 5 minute. You cannot apply the classical method and expect to get the results in real-time on such a huge dataset. Instead, we created TopN to approximate the results in an accurate and fast way. TopN is a C-based postgresql extension.
+Calculating top N elements in a small set is pretty straight forward and easy by just applying count, sort and limit. However, this technique is not much feasible with the current data sizes we encounter in a distributed database in today's world. You cannot apply the classical method on the fly and expect to get the results in real-time on a dataset which grows very quickly. Instead, we created TopN to approximate the results in an accurate and fast way. TopN is a C-based postgresql extension.
 
 ## How does TopN work?
-
 For the top N approximation, the strategy of the algorithm is keeping predefined number of counters for frequent items. If a new item already exist in the counters, its frequency is incremented. Otherwise, the algorithm inserts the new counter into the counter list if there is enough space for one more, but if there is not, the list is pruned by finding the median and removing the bottom half. The accuracy of the result can be increased by storing greater number of counters with the cost of bigger space requirement and slower aggregation.
 
 # Usage
@@ -38,7 +40,7 @@ Takes the union of both `JSONB`s and returns a new `JSONB`.
 
 ### Variables
 ###### `topn.number_of_counters`
-Sets the number of counters to be tracked in a `JSONB`. If at some point, the current number of counters exceed this value, the list is pruned. The default value is 1000 for `topn.number_of_counters`. You can increase the accuracy of the results by increasing the value of this variable by sacrificing space and time.
+Sets the number of counters to be tracked in a `JSONB`. If at some point, the current number of counters exceed `topn.number_of_counters * 3`, the list is pruned. The default value is 1000 for `topn.number_of_counters`. You can increase the accuracy of the results by increasing the value of this variable by sacrificing space and time. The pruning process is applied by removing the bottom half of the maintained `top 3*n`.
 
 # Build
 Once you have PostgreSQL, you're ready to build TopN. For this, you will need to include the pg_config directory path in your make command. This path is typically the same as your PostgreSQL installation's `bin/` directory path. For example:
@@ -50,10 +52,12 @@ You can run the regression tests as the following;
 
     sudo make installcheck
 
-Please note that the test dataset `customer_reviews_1998.csv` file is too big so it is handled by git-lfs.
+Please not that, tests are run on top of a dataset and it is downloaded when you run the above command. Thus, please make sure that you have connection.
 
 # Basic Use Case Example
-Here we take a customer_reviews data and try to find the top products according to their number of reviews. We will aggregate the data into different JSONBs monthly and use these JSONBs to query the top 20 elements in around 2 years. You can also just query the top elements in a/multiple months since they all have their own TopN aggregated datasets. 
+We will try to provide a similar use case that we encounter in Citus and how we solve it. Let's assume you power a dashboard for customer reviews and you want to visualize the products with their review ratio on a monthly or yearly basis.
+
+Here we take a customer_reviews data and try to find the top products according to their number of reviews. We will aggregate the data into different JSONBs monthly and use these JSONBs to query the top 10 elements in around 2 years. You can also just query the top elements in a/multiple months since they all have their own TopN aggregated datasets.
 
 Let's start with downloading and decompressing the data
 files.
@@ -158,4 +162,4 @@ Time: 83.922 ms
 
 You can always tune TopN to output a more accurate result and even with default settings, we believe it is competent. Obviously taking the results in 83 ms is the real value we want to highlight here.
 
-If you want to add anything, please contact us via [www.citusdata.com](https://www.citusdata.com)
+If you want to add anything, please contact us via [citusdata](https://www.citusdata.com)
