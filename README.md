@@ -1,22 +1,18 @@
 # TopN
 
-`TopN` is a PostgreSQL extension that returns the top values in a table according to some criteria. In PostgreSQL, when you want to compute top values from raw events data, you typically run count-sort-limit queries.
+`TopN` is a PostgreSQL extension that returns the top values in a database according to some criteria. TopN takes elements in a data set, ranks them according to a given rule, and picks the top elements in that data set. When doing this, TopN applies an approximation algorithm to provide fast results using few compute and memory resources.
 
-The `TopN` extension becomes useful when you want to materialize these top values, merge top values from different time intervals, and serve these values for real-time analytics queries.
-
-If you're familiar with [the PostgreSQL HLL extension](https://github.com/citusdata/postgresql-hll), you can also think of `TopN` as its cousin.
+The `TopN` extension becomes useful when you want to materialize top values, incrementally update these values, and/or merge top values from different time intervals. If you're familiar with [the PostgreSQL HLL extension](https://github.com/citusdata/postgresql-hll), you can think of `TopN` as its cousin.
 
 ## When to use TopN
-TopN takes elements in a data set, ranks them according to a given rule, and picks the top elements in that data set. When doing this, TopN applies an approximation algorithm to provide fast results using few compute and memory resources.
-
 TopN becomes helpful when serving customer-facing dashboards or running analytical queries that need sub-second responses. Ranking events, users, or products in a given dimension becomes important for these workloads.
+
+`TopN` is used by customers in production to compute and serve real-time analytics queries over terabytes of data.
 
 ## Why use TopN
 Calculating TopN elements in a set by by applying count, sort, and limit is simple. As data sizes increase however, this method becomes slow and resource intensive.
 
 The `TopN` extension enables you to serve instant and approximate results to TopN queries. To do this, you first materialize top values according to some criteria in a data type. You can then incrementally update these top values, or merge them on-demand across different time intervals.
-
-`TopN` is used by customers in production to compute and serve real-time analytics queries over terabytes of data.
 
 ## How does TopN work
 The `TopN` approximation algorithm keeps a predefined number of frequent items and counters. If a new item already exists among these frequent items, the algorithm increases the item's frequency counter. Else, the algorithm inserts the new item into the counter list when there is enough space. If there isn't enough space, the algorithm evicts an existing entry from the bottom half of its list.
@@ -75,60 +71,43 @@ Now, we're going to create an aggregation table that captures the most popular p
 -- Create a roll-up table to capture most popular products
 CREATE TABLE popular_products
 (
-  date date,
+  review_date date UNIQUE,
   agg_data jsonb
 );
 
--- Create different summaries by grouping the reviews according to their year and month
-
+-- Create different summaries by grouping top reviews for each date (day, month, year)
 INSERT INTO popular_products
-    SELECT
-        date_trunc('day', review_date),
-        topn_add_agg(product_id)
-    FROM 
-        customer_reviews
-    GROUP BY 
-        1;
+    SELECT review_date, topn_add_agg(product_id)
+    FROM customer_reviews
+    GROUP BY review_date;
 ```
 
-From this table, we can find the most popular products per day in a matter of milliseconds.
+From this table, you can compute the most popular/reviewed product for each day, in the blink of an eye.
 
 ```SQL
-SELECT 
-    date, 
-    (topn(agg_data, 1)).* 
-FROM 
-    popular_products 
-ORDER BY 
-    date;
+SELECT review_date, (topn(agg_data, 1)).* 
+FROM popular_products 
+ORDER BY review_date;
 ```
 
-You can even easily find the top 10 products for the first week of the year.
+You can also instantly find the top 10 reviewed products across any time interval, in this case January.
 
 ```SQL
-SELECT 
-    (topn(topn_union_agg(agg_data), 10)).* 
-FROM 
-    popular_products 
-WHERE 
-    date >= '2000-01-01' AND date < '2000-01-08' 
-ORDER BY 
-    2 DESC;
+SELECT (topn(topn_union_agg(agg_data), 10)).* 
+FROM popular_products 
+WHERE review_date >= '2000-01-01' AND review_date < '2000-02-01' 
+ORDER BY 2 DESC;
 ```
 
-Or monthly top 1 product for all year
+Or, you can quickly find the most reviewed product for each month in 2000.
+
 ```SQL
-SELECT 
-    date_trunc('month', date), 
-    (topn(topn_union_agg(agg_data), 1)).* 
-FROM 
-    popular_products 
-WHERE 
-    date >= '2000-01-01' AND date < '2001-01-01' 
-GROUP BY 
-    1 
-ORDER BY 
-    1;
+SELECT date_trunc('month', review_date) AS review_month,
+       (topn(topn_union_agg(agg_data), 1)).* 
+FROM popular_products 
+WHERE review_date >= '2000-01-01' AND review_date < '2001-01-01' 
+GROUP BY review_month 
+ORDER BY review_month;
 ```
 
 # Usage
