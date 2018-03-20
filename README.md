@@ -44,7 +44,7 @@ In this example, we take example customer reviews data from Amazon, and find the
 Next, we're going to connect to PostgreSQL and create the `TopN` extension.
 
 ```SQL
-CREATE EXTENSION TopN;
+CREATE EXTENSION topn;
 ```
 
 Let's then create our example table and load data into it.
@@ -75,42 +75,60 @@ Now, we're going to create an aggregation table that captures the most popular p
 -- Create a roll-up table to capture most popular products
 CREATE TABLE popular_products
 (
-  review_summary jsonb,
-  year double precision,
-  month double precision
+  date date,
+  agg_data jsonb
 );
 
 -- Create different summaries by grouping the reviews according to their year and month
 
 INSERT INTO popular_products
     SELECT
-        topn_add_agg(product_id),
-        extract(year from review_date) as year,
-        extract(month from review_date) as month
-    FROM customer_reviews
-    GROUP BY year, month;
+        date_trunc('day', review_date),
+        topn_add_agg(product_id)
+    FROM 
+        customer_reviews
+    GROUP BY 
+        1;
 ```
 
-From this table, we can find the most popular products for the year in a matter of milliseconds.
+From this table, we can find the most popular products per day in a matter of milliseconds.
 
 ```SQL
--- Let's find the top 10 values.
-
-postgres=# SELECT 
-    (topn(topn_union_agg(review_summary), 10)).* 
+SELECT 
+    date, 
+    (topn(agg_data, 1)).* 
 FROM 
-    popular_products;
-    item    | frequency
-------------+-----------
- 0807281956 |      3978
- 043936213X |      3960
- 0807281751 |      3959
- 0590353403 |      3959
- 0786222727 |      3959
- 0939173344 |      3959
- 0807286001 |      3959
- 0553456636 |      3808
- 038529929X |      3808
+    popular_products 
+ORDER BY 
+    date;
+```
+
+You can even easily find the top 10 products for the first week of the year.
+
+```SQL
+SELECT 
+    (topn(topn_union_agg(agg_data), 10)).* 
+FROM 
+    popular_products 
+WHERE 
+    date >= '2000-01-01' AND date < '2000-01-08' 
+ORDER BY 
+    2 DESC;
+```
+
+Or monthly top 1 product for all year
+```SQL
+SELECT 
+    date_trunc('month', date), 
+    (topn(topn_union_agg(agg_data), 1)).* 
+FROM 
+    popular_products 
+WHERE 
+    date >= '2000-01-01' AND date < '2001-01-01' 
+GROUP BY 
+    1 
+ORDER BY 
+    1;
 ```
 
 # Usage
