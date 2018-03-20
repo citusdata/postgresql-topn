@@ -32,7 +32,9 @@ You can run the regression tests as the following.
 
 # Example
 
-In this example, we take example customer reviews data from Amazon, and find the top ten products that received the most reviews. Let's start by downloading and decompressing source data files.
+In this example, we take example customer reviews data from Amazon. We're then going to analyze the most reviewed products based on different criteria.
+
+Let's start by downloading and decompressing source data files.
 
     wget http://examples.citusdata.com/customer_reviews_2000.csv.gz
     gzip -d customer_reviews_2000.csv.gz
