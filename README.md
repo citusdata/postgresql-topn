@@ -70,46 +70,71 @@ CREATE TABLE customer_reviews
 Now, we're going to create an aggregation table that captures the most popular products for each month. We're then going to materialize top products for each month.
 
 ```SQL
--- Create a roll-up table to capture most popular products
 CREATE TABLE popular_products
 (
-  review_date date UNIQUE,
+  date date,
   agg_data jsonb
 );
 
--- Create different summaries by grouping top reviews for each date (day, month, year)
 INSERT INTO popular_products
-    SELECT review_date, topn_add_agg(product_id)
-    FROM customer_reviews
-    GROUP BY review_date;
+    SELECT
+        date_trunc('day', review_date),
+        topn_add_agg(product_id)
+    FROM 
+        customer_reviews
+    GROUP BY 
+        1;
 ```
 
-From this table, you can compute the most popular/reviewed product for each day, in the blink of an eye.
+From this table, we can find the most popular products per day in a matter of milliseconds.
 
 ```SQL
-SELECT review_date, (topn(agg_data, 1)).* 
-FROM popular_products 
-ORDER BY review_date;
+SELECT 
+    date, 
+    (topn(agg_data, 1)).* 
+FROM 
+    popular_products 
+ORDER BY 
+    date;
 ```
 
-You can also instantly find the top 10 reviewed products across any time interval, in this case January.
+You can even easily find the top 10 products for the first week of the year.
 
 ```SQL
-SELECT (topn(topn_union_agg(agg_data), 10)).* 
-FROM popular_products 
-WHERE review_date >= '2000-01-01' AND review_date < '2000-02-01' 
-ORDER BY 2 DESC;
+SELECT 
+    (topn(topn_union_agg(agg_data), 10)).* 
+FROM 
+    popular_products 
+WHERE 
+    date >= '2000-01-01' AND date < '2000-01-08' 
+ORDER BY 
+    2 DESC;
 ```
 
-Or, you can quickly find the most reviewed product for each month in 2000.
-
+Or you can fetch the top 1 product for each month of the year.
 ```SQL
-SELECT date_trunc('month', review_date) AS review_month,
-       (topn(topn_union_agg(agg_data), 1)).* 
-FROM popular_products 
-WHERE review_date >= '2000-01-01' AND review_date < '2001-01-01' 
-GROUP BY review_month 
-ORDER BY review_month;
+SELECT 
+    date_trunc('month', date), 
+    (topn(topn_union_agg(agg_data), 1)).* 
+FROM 
+    popular_products 
+WHERE 
+    date >= '2000-01-01' AND date < '2001-01-01' 
+GROUP BY 
+    1 
+ORDER BY 
+    1;
+```
+
+Even a more interesting query would be to calculate the TopNs on a sliding window of last 7 days.
+```SQL
+SELECT 
+    date, 
+    topn_union_agg(agg_data) OVER seven_days 
+FROM 
+    popular_products 
+WINDOW 
+    seven_days AS (ORDER BY date ASC ROWS 6 PRECEDING);
 ```
 
 # Usage
