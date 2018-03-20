@@ -7,7 +7,7 @@ The `TopN` extension becomes useful when you want to materialize top values, inc
 ## When to use TopN
 TopN becomes helpful when serving customer-facing dashboards or running analytical queries that need sub-second responses. Ranking events, users, or products in a given dimension becomes important for these workloads.
 
-`TopN` is used by customers in production to compute and serve real-time analytics queries over terabytes of data.
+`TopN` is used by customers in production to serve real-time analytics queries over terabytes of data.
 
 ## Why use TopN
 Calculating TopN elements in a set by by applying count, sort, and limit is simple. As data sizes increase however, this method becomes slow and resource intensive.
