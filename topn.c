@@ -506,7 +506,6 @@ topn_pack(PG_FUNCTION_ARGS)
 			PruneHashTable(topnTrans->hashTable, NumberOfCounters, NumberOfCounters);
 
 			jsonb = MaterializeAggStateToJsonb(topnTrans);
-	//		hash_destroy(topnTrans->hashTable);
 		}
 	}
 	else
