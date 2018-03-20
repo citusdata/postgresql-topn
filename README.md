@@ -6,19 +6,19 @@ The `TopN` extension becomes useful when you want to materialize these top value
 
 If you're familiar with [the PostgreSQL HLL extension](https://github.com/citusdata/postgresql-hll), you can also think of `TopN` as its cousin.
 
-## When to use TopN?
+## When to use TopN
 TopN takes elements in a data set, ranks them according to a given rule, and picks the top elements in that data set. When doing this, TopN applies an approximation algorithm to provide fast results using few compute and memory resources.
 
 TopN becomes helpful when serving customer-facing dashboards or running analytical queries that need sub-second responses. Ranking events, users, or products in a given dimension becomes important for these workloads.
 
-## Why use TopN?
+## Why use TopN
 Calculating TopN elements in a set by by applying count, sort, and limit is simple. As data sizes increase however, this method becomes slow and resource intensive.
 
 The `TopN` extension enables you to serve instant and approximate results to TopN queries. To do this, you first materialize top values according to some criteria in a data type. You can then incrementally update these top values, or merge them on-demand across different time intervals.
 
 `TopN` is used by customers in production to compute and serve real-time analytics queries over terabytes of data.
 
-## How does TopN work?
+## How does TopN work
 The `TopN` approximation algorithm keeps a predefined number of frequent items and counters. If a new item already exists among these frequent items, the algorithm increases the item's frequency counter. Else, the algorithm inserts the new item into the counter list when there is enough space. If there isn't enough space, the algorithm evicts an existing entry from the bottom half of its list.
 
 You can increase the algoritm's accuracy by increasing the predefined number of frequent items/counters.
@@ -139,4 +139,4 @@ Takes the union of both `JSONB`s and returns a new `JSONB`.
 
 ### Config settings
 ###### `topn.number_of_counters`
-Sets the number of counters to be tracked in a `JSONB`. If at some point, the current number of counters exceed `topn.number_of_counters * 3`, the list is pruned. The default value is 1000 for `topn.number_of_counters`. You can increase the accuracy of the results by increasing the value of this variable by sacrificing space and time. The pruning process is applied by removing the bottom half of the maintained `top 3*n`.
+Sets the number of counters to be tracked in a `JSONB`. If at some point, the current number of counters exceed `topn.number_of_counters` * 3, the list is pruned. The default value is 1000 for `topn.number_of_counters`. When you increase this setting, `TopN` uses more space and provides more accurate estimates.
