@@ -2,7 +2,7 @@
 
 `TopN` is a PostgreSQL extension that returns the top values in a database according to some criteria. TopN takes elements in a data set, ranks them according to a given rule, and picks the top elements in that data set. When doing this, TopN applies an approximation algorithm to provide fast results using few compute and memory resources.
 
-The `TopN` extension becomes useful when you want to materialize top values, incrementally update these values, and/or merge top values from different time intervals. If you're familiar with [the PostgreSQL HLL extension](https://github.com/citusdata/postgresql-hll), you can think of `TopN` as its cousin.
+The `TopN` extension becomes useful when you want to materialize top values, incrementally update top values values, and/or merge top values from different time intervals. If you're familiar with [the PostgreSQL HLL extension](https://github.com/citusdata/postgresql-hll), you can think of `TopN` as its cousin.
 
 ## When to use TopN
 TopN becomes helpful when serving customer-facing dashboards or running analytical queries that need sub-second responses. Ranking events, users, or products in a given dimension becomes important for these workloads.
