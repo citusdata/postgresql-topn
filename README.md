@@ -14,6 +14,8 @@ Calculating TopN elements in a set by by applying count, sort, and limit is simp
 
 The `TopN` extension enables you to serve instant and approximate results to TopN queries. To do this, you first materialize top values according to some criteria in a data type. You can then incrementally update these top values, or merge them on-demand across different time intervals.
 
+TopN was first created to aid a Citus Data customer who was using the Citus extension to Postgres to scale out their PostgreSQL database across 6 nodes.This customer found TopN to be particularly valuable doing aggregations and incrementally updating the top values, which is when we realized that the broader Postgres community could benefit and we made the decision to open source the TopN extension under the AGPL-3.0 open source software license.
+
 ## How does TopN work
 The `TopN` approximation algorithm keeps a predefined number of frequent items and counters. If a new item already exists among these frequent items, the algorithm increases the item's frequency counter. Else, the algorithm inserts the new item into the counter list when there is enough space. If there isn't enough space, the algorithm evicts an existing entry from the bottom half of its list.
 
@@ -86,7 +88,7 @@ INSERT INTO popular_products
         1;
 ```
 
-From this table, we can find the most popular products per day in a matter of milliseconds.
+From this table, you can compute the most popular/reviewed product for each day, in the blink of an eye.
 
 ```SQL
 SELECT 
@@ -98,7 +100,7 @@ ORDER BY
     date;
 ```
 
-You can even easily find the top 10 products for the first week of the year.
+You can also instantly find the top 10 reviewed products across any time interval, in this case January.
 
 ```SQL
 SELECT 
@@ -111,7 +113,7 @@ ORDER BY
     2 DESC;
 ```
 
-Or you can fetch the top 1 product for each month of the year.
+Or, you can quickly find the most reviewed product for each month in 2000.
 ```SQL
 SELECT 
     date_trunc('month', date), 
