@@ -21,6 +21,10 @@ The `TopN` approximation algorithm keeps a predefined number of frequent items a
 
 You can increase the algoritm's accuracy by increasing the predefined number of frequent items/counters.
 
+# Compatibility
+
+TopN is compatible with Postgres 9.5, 9.6, 10 as well as with other Postgres extensions including the Citus extension to Postgres that enables you to distribute Postgres across multiple nodes. In fact, TopN is compatible with the open source version of Citus, as well as with the enterprise software version of Citus and the fully-managed Citus cloud database. If you need to run this extension on different versions of Postgres, please open an issue. Opening a PR is also highly appreciated.
+
 # Build
 
 Once you have PostgreSQL, you're ready to build TopN. For this, you will need to include the pg_config directory path in your make command. This path is typically the same as your PostgreSQL installation's bin/ directory path. For example:
@@ -166,3 +170,8 @@ Takes the union of both `JSONB`s and returns a new `JSONB`.
 ### Config settings
 ###### `topn.number_of_counters`
 Sets the number of counters to be tracked in a `JSONB`. If at some point, the current number of counters exceed `topn.number_of_counters` * 3, the list is pruned. The default value is 1000 for `topn.number_of_counters`. When you increase this setting, `TopN` uses more space and provides more accurate estimates.
+
+
+# Acknowledgements
+The original development of TopN is done by Furkan Sahin who is a software developer in Citus Data.
+TopN is a product of Citus Data and it is maintained by the engineers in Citus. 
