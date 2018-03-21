@@ -14,10 +14,16 @@ Calculating TopN elements in a set by by applying count, sort, and limit is simp
 
 The `TopN` extension enables you to serve instant and approximate results to TopN queries. To do this, you first materialize top values according to some criteria in a data type. You can then incrementally update these top values, or merge them on-demand across different time intervals.
 
+TopN was first created to aid a Citus Data customer who was using the Citus extension to Postgres to scale out their PostgreSQL database across 6 nodes.This customer found TopN to be particularly valuable doing aggregations and incrementally updating the top values, which is when we realized that the broader Postgres community could benefit and we made the decision to open source the TopN extension under the AGPL-3.0 open source software license.
+
 ## How does TopN work
 The `TopN` approximation algorithm keeps a predefined number of frequent items and counters. If a new item already exists among these frequent items, the algorithm increases the item's frequency counter. Else, the algorithm inserts the new item into the counter list when there is enough space. If there isn't enough space, the algorithm evicts an existing entry from the bottom half of its list.
 
 You can increase the algoritm's accuracy by increasing the predefined number of frequent items/counters.
+
+# Compatibility
+
+TopN is compatible with Postgres 9.5, 9.6, 10 as well as with other Postgres extensions including the Citus extension to Postgres that enables you to distribute Postgres across multiple nodes. In fact, TopN is compatible with the open source version of Citus, as well as with the enterprise software version of Citus and the fully-managed Citus cloud database. If you need to run this extension on different versions of Postgres, please open an issue. Opening a PR is also highly appreciated.
 
 # Build
 
@@ -70,46 +76,71 @@ CREATE TABLE customer_reviews
 Now, we're going to create an aggregation table that captures the most popular products for each month. We're then going to materialize top products for each month.
 
 ```SQL
--- Create a roll-up table to capture most popular products
 CREATE TABLE popular_products
 (
-  review_date date UNIQUE,
+  date date,
   agg_data jsonb
 );
 
--- Create different summaries by grouping top reviews for each date (day, month, year)
 INSERT INTO popular_products
-    SELECT review_date, topn_add_agg(product_id)
-    FROM customer_reviews
-    GROUP BY review_date;
+    SELECT
+        date_trunc('day', review_date),
+        topn_add_agg(product_id)
+    FROM 
+        customer_reviews
+    GROUP BY 
+        1;
 ```
 
 From this table, you can compute the most popular/reviewed product for each day, in the blink of an eye.
 
 ```SQL
-SELECT review_date, (topn(agg_data, 1)).* 
-FROM popular_products 
-ORDER BY review_date;
+SELECT 
+    date, 
+    (topn(agg_data, 1)).* 
+FROM 
+    popular_products 
+ORDER BY 
+    date;
 ```
 
 You can also instantly find the top 10 reviewed products across any time interval, in this case January.
 
 ```SQL
-SELECT (topn(topn_union_agg(agg_data), 10)).* 
-FROM popular_products 
-WHERE review_date >= '2000-01-01' AND review_date < '2000-02-01' 
-ORDER BY 2 DESC;
+SELECT 
+    (topn(topn_union_agg(agg_data), 10)).* 
+FROM 
+    popular_products 
+WHERE 
+    date >= '2000-01-01' AND date < '2000-01-08' 
+ORDER BY 
+    2 DESC;
 ```
 
 Or, you can quickly find the most reviewed product for each month in 2000.
-
 ```SQL
-SELECT date_trunc('month', review_date) AS review_month,
-       (topn(topn_union_agg(agg_data), 1)).* 
-FROM popular_products 
-WHERE review_date >= '2000-01-01' AND review_date < '2001-01-01' 
-GROUP BY review_month 
-ORDER BY review_month;
+SELECT 
+    date_trunc('month', date), 
+    (topn(topn_union_agg(agg_data), 1)).* 
+FROM 
+    popular_products 
+WHERE 
+    date >= '2000-01-01' AND date < '2001-01-01' 
+GROUP BY 
+    1 
+ORDER BY 
+    1;
+```
+
+Even a more interesting query would be to calculate the TopNs on a sliding window of last 7 days.
+```SQL
+SELECT 
+    date, 
+    topn_union_agg(agg_data) OVER seven_days 
+FROM 
+    popular_products 
+WINDOW 
+    seven_days AS (ORDER BY date ASC ROWS 6 PRECEDING);
 ```
 
 # Usage
@@ -139,3 +170,8 @@ Takes the union of both `JSONB`s and returns a new `JSONB`.
 ### Config settings
 ###### `topn.number_of_counters`
 Sets the number of counters to be tracked in a `JSONB`. If at some point, the current number of counters exceed `topn.number_of_counters` * 3, the list is pruned. The default value is 1000 for `topn.number_of_counters`. When you increase this setting, `TopN` uses more space and provides more accurate estimates.
+
+
+# Acknowledgements
+The original development of TopN is done by Furkan Sahin who is a software developer in Citus Data.
+TopN is a product of Citus Data and it is maintained by the engineers in Citus. 
