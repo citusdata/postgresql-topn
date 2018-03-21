@@ -51,4 +51,5 @@ JOIN
     ) products 
 ON true 
 ORDER BY 
-    2 DESC, 1;
+    2 DESC, 1
+LIMIT 5;
