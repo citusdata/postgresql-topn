@@ -447,7 +447,7 @@ topn_union_trans(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		topnTrans = (TopnAggState *) PG_GETARG_POINTER(0);
+		topnTrans = (TopnAggState *) (PG_GETARG_POINTER(0));
 	}
 
 	if (!PG_ARGISNULL(1))

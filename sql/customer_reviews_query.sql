@@ -38,3 +38,31 @@ select
 from
   overall_result
 order by 2 DESC, 1;
+
+
+-- Test window functions
+CREATE TABLE daily_populars
+(
+  date DATE,
+  agg_data JSONB
+);
+
+INSERT INTO daily_populars
+  SELECT
+    date_trunc('day', review_date),
+    topn_add_agg(product_id)
+  FROM 
+    customer_reviews
+  GROUP BY 
+    1;
+
+SELECT 
+  date, 
+  topn_union_agg(agg_data) OVER seven_days 
+FROM 
+  daily_populars 
+WINDOW 
+  seven_days AS (ORDER BY date ASC ROWS 6 PRECEDING)
+ORDER BY 
+  1
+LIMIT 5;
