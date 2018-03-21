@@ -78,7 +78,7 @@ Now, we're going to create an aggregation table that captures the most popular p
 ```SQL
 CREATE TABLE popular_products
 (
-  date date,
+  day date,
   agg_data jsonb
 );
 
@@ -96,12 +96,12 @@ From this table, you can compute the most popular/reviewed product for each day,
 
 ```SQL
 SELECT 
-    date, 
+    day, 
     (topn(agg_data, 1)).* 
 FROM 
     popular_products 
 ORDER BY 
-    date;
+    day;
 ```
 
 You can also instantly find the top 10 reviewed products across any time interval, in this case January.
@@ -112,7 +112,7 @@ SELECT
 FROM 
     popular_products 
 WHERE 
-    date >= '2000-01-01' AND date < '2000-01-08' 
+    day >= '2000-01-01' AND day < '2000-01-08' 
 ORDER BY 
     2 DESC;
 ```
@@ -120,12 +120,12 @@ ORDER BY
 Or, you can quickly find the most reviewed product for each month in 2000.
 ```SQL
 SELECT 
-    date_trunc('month', date), 
+    date_trunc('month', day), 
     (topn(topn_union_agg(agg_data), 1)).* 
 FROM 
     popular_products 
 WHERE 
-    date >= '2000-01-01' AND date < '2001-01-01' 
+    day >= '2000-01-01' AND day < '2001-01-01' 
 GROUP BY 
     1 
 ORDER BY 
@@ -135,12 +135,12 @@ ORDER BY
 Even a more interesting query would be to calculate the TopNs on a sliding window of last 7 days.
 ```SQL
 SELECT 
-    date, 
+    day, 
     topn_union_agg(agg_data) OVER seven_days 
 FROM 
     popular_products 
 WINDOW 
-    seven_days AS (ORDER BY date ASC ROWS 6 PRECEDING);
+    seven_days AS (ORDER BY day ASC ROWS 6 PRECEDING);
 ```
 
 # Usage
