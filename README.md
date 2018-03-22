@@ -17,9 +17,9 @@ The TopN extension enables you to serve instant and approximate results to TopN 
 TopN was first created to aid a Citus Data customer who was using the Citus extension to Postgres to scale out their PostgreSQL database across 6 nodes.This customer found TopN to be particularly valuable doing aggregations and incrementally updating the top values, which is when we realized that the broader Postgres community could benefit and we made the decision to open source the TopN extension under the AGPL-3.0 open source software license.
 
 ## How does TopN work
-Our TopN implementation is inspired by the [Space-Saving algorithm](http://www.cse.ust.hk/~raywong/comp5331/References/EfficientComputationOfFrequentAndTop-kElementsInDataStreams.pdf) (Metwally, A. et al.) which we make some improvements for increased accuracy and performance. The TopN approximation algorithm keeps a predefined number of frequent items and counters. If a new item already exists among these frequent items, the algorithm increases the item's frequency counter. Else, the algorithm inserts the new item into the counter list when there is enough space. If there isn't enough space, the algorithm evicts the bottom half of all counters which is one of the main differences from the paper and it makes TopN faster because we need to sort the set less frequently. Since we typically keep counters for many more items (e.g. 100*N) than we are actually interested in, the actual top N items in the data set are unlikely to get evicted from the set of counters and will typically have accurate counts. 
+Our TopN implementation is inspired by the [Space-Saving algorithm](http://www.cse.ust.hk/~raywong/comp5331/References/EfficientComputationOfFrequentAndTop-kElementsInDataStreams.pdf) (Metwally, A. et al.) to which we made improvements for increased accuracy and performance. The TopN approximation algorithm keeps a predefined number of frequent items and counters. If a new item already exists among these frequent items, the algorithm increases the item's frequency counter. Else, the algorithm inserts the new item into the counter list when there is enough space. If there isn't enough space, the algorithm evicts the bottom half of all counters which is one of the main differences from the paper and it makes TopN faster because we need to sort the set less frequently. Since we typically keep counters for many more items (e.g. 100*N) than we are actually interested in, the actual top N items in the data set are unlikely to get evicted from the set of counters and will typically have accurate counts. 
 
-We have seen that in many scenarios with the default settings, TopN is around 100% accurate in terms of both ordering and the frequency of items. However, it worths to mention that the best results can be collected when the data is uncorrelated and you can always tune the algoritm's accuracy by increasing the predefined number of frequent items/counters. 
+We have seen that in many scenarios with the default settings, TopN is around 100% accurate in terms of both ordering and the frequency of items. It's worth mentioning that best results are obtained when the order of the input data is uncorrelated and you can always tune the algoritm's accuracy by increasing the predefined number of frequent items/counters. 
 
 TopN stores the top values and their counters in a JSONB which we consciously chose to benefit from features such as TOAST compression, indexing and being easily exportable.
 
@@ -173,9 +173,9 @@ Sets the number of counters to be tracked in a `JSONB`. If at some point, the cu
 
 
 # Acknowledgements
-TopN is implemented based on an earlier prototype by [Remzi Can Aksoy](https://github.com/remzicanaksoy) and [Metin Döşlü](https://github.com/metdos).
-
 The current development of TopN is done by [Furkan Sahin](https://github.com/furkansahin) and [Marco Slot](https://github.com/marcoslot).
+
+TopN is implemented based on an earlier prototype by [Remzi Can Aksoy](https://github.com/remzicanaksoy) and [Metin Döşlü](https://github.com/metdos).
 
 TopN is a product of [Citus Data](https://github.com/citusdata) and it is maintained by the engineers in Citus. 
 
