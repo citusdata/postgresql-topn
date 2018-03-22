@@ -104,7 +104,7 @@ ORDER BY
     day;
 ```
 
-You can also instantly find the top 10 reviewed products across any time interval, in this case January.
+You can also instantly find the top 10 reviewed products across any time interval, in this case the first week of January.
 
 ```SQL
 SELECT 
