@@ -1,23 +1,23 @@
 # TopN
 
-`TopN` is a PostgreSQL extension that returns the top values in a database according to some criteria. TopN takes elements in a data set, ranks them according to a given rule, and picks the top elements in that data set. When doing this, TopN applies an approximation algorithm to provide fast results using few compute and memory resources.
+TopN is a PostgreSQL extension that returns the top values in a database according to some criteria. TopN takes elements in a data set, ranks them according to a given rule, and picks the top elements in that data set. When doing this, TopN applies an approximation algorithm to provide fast results using few compute and memory resources.
 
-The `TopN` extension becomes useful when you want to materialize top values, incrementally update these top values, and/or merge top values from different time intervals. If you're familiar with [the PostgreSQL HLL extension](https://github.com/citusdata/postgresql-hll), you can think of `TopN` as its cousin.
+The TopN extension becomes useful when you want to materialize top values, incrementally update these top values, and/or merge top values from different time intervals. If you're familiar with [the PostgreSQL HLL extension](https://github.com/citusdata/postgresql-hll), you can think of TopN as its cousin.
 
 ## When to use TopN
 TopN becomes helpful when serving customer-facing dashboards or running analytical queries that need sub-second responses. Ranking events, users, or products in a given dimension becomes important for these workloads.
 
-`TopN` is used by customers in production to serve real-time analytics queries over terabytes of data.
+TopN is used by customers in production to serve real-time analytics queries over terabytes of data.
 
 ## Why use TopN
 Calculating TopN elements in a set by by applying count, sort, and limit is simple. As data sizes increase however, this method becomes slow and resource intensive.
 
-The `TopN` extension enables you to serve instant and approximate results to TopN queries. To do this, you first materialize top values according to some criteria in a data type. You can then incrementally update these top values, or merge them on-demand across different time intervals.
+The TopN extension enables you to serve instant and approximate results to TopN queries. To do this, you first materialize top values according to some criteria in a data type. You can then incrementally update these top values, or merge them on-demand across different time intervals.
 
 TopN was first created to aid a Citus Data customer who was using the Citus extension to Postgres to scale out their PostgreSQL database across 6 nodes.This customer found TopN to be particularly valuable doing aggregations and incrementally updating the top values, which is when we realized that the broader Postgres community could benefit and we made the decision to open source the TopN extension under the AGPL-3.0 open source software license.
 
 ## How does TopN work
-Our TopN implementation is inspired by the [Space-Saving algorithm](http://www.cse.ust.hk/~raywong/comp5331/References/EfficientComputationOfFrequentAndTop-kElementsInDataStreams.pdf) (Metwally, A. et al.) which we make some improvements for increased accuracy and performance. The `TopN` approximation algorithm keeps a predefined number of frequent items and counters. If a new item already exists among these frequent items, the algorithm increases the item's frequency counter. Else, the algorithm inserts the new item into the counter list when there is enough space. If there isn't enough space, the algorithm evicts the bottom half of all counters which is one of the main differences from the paper and it makes TopN faster because we need to sort the set less frequently. Since we typically keep counters for many more items (e.g. 100*N) than we are actually interested in, the actual top N items in the data set are unlikely to get evicted from the set of counters and will typically have accurate counts. 
+Our TopN implementation is inspired by the [Space-Saving algorithm](http://www.cse.ust.hk/~raywong/comp5331/References/EfficientComputationOfFrequentAndTop-kElementsInDataStreams.pdf) (Metwally, A. et al.) which we make some improvements for increased accuracy and performance. The TopN approximation algorithm keeps a predefined number of frequent items and counters. If a new item already exists among these frequent items, the algorithm increases the item's frequency counter. Else, the algorithm inserts the new item into the counter list when there is enough space. If there isn't enough space, the algorithm evicts the bottom half of all counters which is one of the main differences from the paper and it makes TopN faster because we need to sort the set less frequently. Since we typically keep counters for many more items (e.g. 100*N) than we are actually interested in, the actual top N items in the data set are unlikely to get evicted from the set of counters and will typically have accurate counts. 
 
 We have seen that in many scenarios with the default settings, TopN is around 100% accurate in terms of both ordering and the frequency of items. However, it worths to mention that the best results can be collected when the data is uncorrelated and you can always tune the algoritm's accuracy by increasing the predefined number of frequent items/counters. 
 
@@ -45,7 +45,7 @@ Let's start by downloading and decompressing source data files.
     wget http://examples.citusdata.com/customer_reviews_2000.csv.gz
     gzip -d customer_reviews_2000.csv.gz
 
-Next, we're going to connect to PostgreSQL and create the `TopN` extension.
+Next, we're going to connect to PostgreSQL and create the TopN extension.
 
 ```SQL
 CREATE EXTENSION topn;
@@ -144,7 +144,7 @@ WINDOW
 ```
 
 # Usage
-`TopN` provides the following user-defined functions and aggregates.
+TopN provides the following user-defined functions and aggregates.
 
 ### Data Type
 ###### `JSONB`
@@ -169,7 +169,7 @@ Takes the union of both `JSONB`s and returns a new `JSONB`.
 
 ### Config settings
 ###### `topn.number_of_counters`
-Sets the number of counters to be tracked in a `JSONB`. If at some point, the current number of counters exceed `topn.number_of_counters` * 3, the list is pruned. The default value is 1000 for `topn.number_of_counters`. When you increase this setting, `TopN` uses more space and provides more accurate estimates.
+Sets the number of counters to be tracked in a `JSONB`. If at some point, the current number of counters exceed `topn.number_of_counters` * 3, the list is pruned. The default value is 1000 for `topn.number_of_counters`. When you increase this setting, TopN uses more space and provides more accurate estimates.
 
 
 # Acknowledgements
