@@ -41,7 +41,7 @@ Let's start by downloading and decompressing source data files.
     wget http://examples.citusdata.com/customer_reviews_2000.csv.gz
     gzip -d customer_reviews_2000.csv.gz
 
-Next, we're going to connect to PostgreSQL and create the open source `TopN` extension.
+Next, we're going to connect to PostgreSQL and create the `TopN` extension.
 
 ```SQL
 CREATE EXTENSION topn;
