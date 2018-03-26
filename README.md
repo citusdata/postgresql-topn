@@ -1,6 +1,6 @@
 # TopN
 
-`TopN` is a PostgreSQL extension that returns the top values in a database according to some criteria. TopN takes elements in a data set, ranks them according to a given rule, and picks the top elements in that data set. When doing this, TopN applies an approximation algorithm to provide fast results using few compute and memory resources.
+`TopN` is an open source PostgreSQL extension that returns the top values in a database according to some criteria. TopN takes elements in a data set, ranks them according to a given rule, and picks the top elements in that data set. When doing this, TopN applies an approximation algorithm to provide fast results using few compute and memory resources.
 
 The `TopN` extension becomes useful when you want to materialize top values, incrementally update these top values, and/or merge top values from different time intervals. If you're familiar with [the PostgreSQL HLL extension](https://github.com/citusdata/postgresql-hll), you can think of `TopN` as its cousin.
 
@@ -12,10 +12,12 @@ TopN becomes helpful when serving customer-facing dashboards or running analytic
 ## Why use TopN
 Calculating TopN elements in a set by by applying count, sort, and limit is simple. As data sizes increase however, this method becomes slow and resource intensive.
 
-The `TopN` extension enables you to serve instant and approximate results to TopN queries. To do this, you first materialize top values according to some criteria in a data type. You can then incrementally update these top values, or merge them on-demand across different time intervals.
+The open source `TopN` extension enables you to serve instant and approximate results to TopN queries. To do this, you first materialize top values according to some criteria in a data type. You can then incrementally update these top values, or merge them on-demand across different time intervals.
+
+`TopN` was originally created to help [Citus Data](https://www.citusdata.com) customers, who needed to scale out their PostgreSQL databases across dozens of machines. These customers needed to compute top values over terabytes of data in less than a second. We realized that the broader Postgres community could benefit from `TopN`, and decided to open source it for all users.
 
 ## How does TopN work
-The `TopN` approximation algorithm keeps a predefined number of frequent items and counters. If a new item already exists among these frequent items, the algorithm increases the item's frequency counter. Else, the algorithm inserts the new item into the counter list when there is enough space. If there isn't enough space, the algorithm evicts an existing entry from the bottom half of its list.
+The TopN approximation algorithm keeps a predefined number of frequent items and counters. If a new item already exists among these frequent items, the algorithm increases the item's frequency counter. Else, the algorithm inserts the new item into the counter list when there is enough space. If there isn't enough space, the algorithm evicts an existing entry from the bottom half of its list.
 
 You can increase the algoritm's accuracy by increasing the predefined number of frequent items/counters.
 
@@ -39,7 +41,7 @@ Let's start by downloading and decompressing source data files.
     wget http://examples.citusdata.com/customer_reviews_2000.csv.gz
     gzip -d customer_reviews_2000.csv.gz
 
-Next, we're going to connect to PostgreSQL and create the `TopN` extension.
+Next, we're going to connect to PostgreSQL and create the open source `TopN` extension.
 
 ```SQL
 CREATE EXTENSION topn;
@@ -139,3 +141,6 @@ Takes the union of both `JSONB`s and returns a new `JSONB`.
 ### Config settings
 ###### `topn.number_of_counters`
 Sets the number of counters to be tracked in a `JSONB`. If at some point, the current number of counters exceed `topn.number_of_counters` * 3, the list is pruned. The default value is 1000 for `topn.number_of_counters`. When you increase this setting, `TopN` uses more space and provides more accurate estimates.
+
+# Attributions
+`TopN` is develeloped and maintained by the Citus Data team. Citus Data's flagship product, [Citus](https://github.com/citusdata/citus), is an open source extension that distributes Postgres across many machines.
