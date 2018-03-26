@@ -142,5 +142,8 @@ Takes the union of both `JSONB`s and returns a new `JSONB`.
 ###### `topn.number_of_counters`
 Sets the number of counters to be tracked in a `JSONB`. If at some point, the current number of counters exceed `topn.number_of_counters` * 3, the list is pruned. The default value is 1000 for `topn.number_of_counters`. When you increase this setting, `TopN` uses more space and provides more accurate estimates.
 
+# Compatibility
+`TopN` is compatible with PostgreSQL 9.5, 9.6, and 10 releases. `TopN` is also compatible with all supported Citus releases, including Citus 6.x and 7.x. If you need to run `TopN` on a different version of PostgreSQL or Citus, please open an issue. Opening a pull request (PR) is also highly appreciated.
+
 # Attributions
 `TopN` is develeloped and maintained by the Citus Data team. Citus Data's flagship product, [Citus](https://github.com/citusdata/citus), is an open source extension that distributes Postgres across many machines.
