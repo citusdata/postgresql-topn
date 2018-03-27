@@ -17,7 +17,7 @@ The open source `TopN` extension enables you to serve instant and approximate re
 `TopN` was originally created to help [Citus Data](https://www.citusdata.com) customers, who needed to scale out their PostgreSQL databases across dozens of machines. These customers needed to compute top values over terabytes of data in less than a second. We realized that the broader Postgres community could benefit from `TopN`, and decided to open source it for all users.
 
 ## How does TopN work
-The TopN approximation algorithm keeps a predefined number of frequent items and counters. If a new item already exists among these frequent items, the algorithm increases the item's frequency counter. Else, the algorithm inserts the new item into the counter list when there is enough space. If there isn't enough space, the algorithm evicts an existing entry from the bottom half of its list.
+The TopN approximation algorithm keeps a predefined number of frequent items and counters. If a new item already exists among these frequent items, the algorithm increases the item's frequency counter. Else, the algorithm inserts the new item into the counter list when there is enough space. If there isn't enough space, the algorithm evicts the bottom half of all counters. Since we typically keep counters for many more items (e.g. 100*N) than we are actually interested in, the actual top N items are unlikely to get evicted and will typically have accurate counts.
 
 You can increase the algoritm's accuracy by increasing the predefined number of frequent items/counters.
 
