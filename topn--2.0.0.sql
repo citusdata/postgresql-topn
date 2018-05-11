@@ -20,7 +20,17 @@ CREATE FUNCTION topn_union_trans(internal, jsonb)
     AS 'MODULE_PATHNAME'
     LANGUAGE C;
 
+CREATE FUNCTION topn_union_trans1(internal, jsonb, integer)
+    RETURNS internal
+    AS 'MODULE_PATHNAME'
+    LANGUAGE C;
+
 CREATE FUNCTION topn_add_trans(internal, text)
+    RETURNS internal
+    AS 'MODULE_PATHNAME'
+    LANGUAGE C;
+
+CREATE FUNCTION topn_add_trans1(internal, text, integer)
     RETURNS internal
     AS 'MODULE_PATHNAME'
     LANGUAGE C;
@@ -33,16 +43,33 @@ CREATE FUNCTION topn_pack(internal)
     LANGUAGE C;
 --
 -- Aggregates
+
 CREATE AGGREGATE topn_add_agg(text)(
-	SFUNC = topn_add_trans,
+  SFUNC = topn_add_trans,
+  STYPE = internal,
+  SSPACE = 780000,
+  FINALFUNC = topn_pack
+);
+
+CREATE AGGREGATE topn_add_agg(text, integer)(
+	SFUNC = topn_add_trans1,
 	STYPE = internal,
+  SSPACE = 780000,
 	FINALFUNC = topn_pack
 );
 
 CREATE AGGREGATE topn_union_agg(jsonb)(
 	SFUNC = topn_union_trans,
 	STYPE = internal,
+  SSPACE = 780000,
 	FINALFUNC = topn_pack
+);
+
+CREATE AGGREGATE topn_union_agg(jsonb, integer)(
+  SFUNC = topn_union_trans1,
+  STYPE = internal,
+  SSPACE = 780000,
+  FINALFUNC = topn_pack
 );
 
 CREATE OPERATOR + (
@@ -58,7 +85,11 @@ COMMENT ON FUNCTION topn_add(top_items jsonb, item text)
     IS 'insert the item into the top_items counter';
 COMMENT ON FUNCTION topn_union(top_items jsonb, top_items2 jsonb)
     IS 'take the union of the two top_items counter';
-COMMENT ON AGGREGATE topn_add_agg(item text)
+COMMENT ON AGGREGATE topn_add_agg(item text, size integer)
+    IS 'aggregate the items into one counter';
+    COMMENT ON AGGREGATE topn_add_agg(item text)
     IS 'aggregate the items into one counter';
 COMMENT ON AGGREGATE topn_union_agg(item_counter jsonb)
+    IS 'aggregate the counters into one counter';
+    COMMENT ON AGGREGATE topn_union_agg(item_counter jsonb, size integer)
     IS 'aggregate the counters into one counter';
