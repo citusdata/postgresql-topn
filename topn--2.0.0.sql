@@ -4,15 +4,25 @@ CREATE FUNCTION topn(jsonb, integer)
     AS 'MODULE_PATHNAME'
     LANGUAGE C IMMUTABLE STRICT;
 
-CREATE FUNCTION topn_add(jsonb, text)
-	RETURNS jsonb
-	AS 'MODULE_PATHNAME'
-	LANGUAGE C IMMUTABLE;
+CREATE FUNCTION topn_add(jsonb, text, integer default -1)
+  RETURNS jsonb
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE;
 
-CREATE FUNCTION topn_union(jsonb, jsonb)
-	RETURNS jsonb
-	AS 'MODULE_PATHNAME'
-	LANGUAGE C IMMUTABLE STRICT;
+CREATE FUNCTION topn_union(jsonb, jsonb, integer default -1)
+  RETURNS jsonb
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION topn_sum(j1 jsonb, j2 jsonb)
+  RETURNS jsonb
+  AS
+  $$
+  begin
+    return topn_union(j1, j2);
+  end
+  $$
+  LANGUAGE plpgsql IMMUTABLE STRICT;
 
 --trans function
 CREATE FUNCTION topn_union_trans(internal, jsonb)
@@ -75,15 +85,15 @@ CREATE AGGREGATE topn_union_agg(jsonb, integer)(
 CREATE OPERATOR + (
 			leftarg = jsonb,
 			rightarg = jsonb,
-			procedure = topn_union,
+			procedure = topn_sum,
 			commutator = +
 );
 
 COMMENT ON FUNCTION topn(top_items jsonb, n integer)
     IS 'get the top n items from top_items';
-COMMENT ON FUNCTION topn_add(top_items jsonb, item text)
+COMMENT ON FUNCTION topn_add(top_items jsonb, item text, size integer)
     IS 'insert the item into the top_items counter';
-COMMENT ON FUNCTION topn_union(top_items jsonb, top_items2 jsonb)
+COMMENT ON FUNCTION topn_union(top_items jsonb, top_items2 jsonb, size integer)
     IS 'take the union of the two top_items counter';
 COMMENT ON AGGREGATE topn_add_agg(item text, size integer)
     IS 'aggregate the items into one counter';

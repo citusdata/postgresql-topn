@@ -265,7 +265,16 @@ topn_add(PG_FUNCTION_ARGS)
 	text *itemText = NULL;
 	bool found = false;
 	char itemString[MAX_KEYSIZE];
+	int numberOfCounters;
 
+	if (PG_GETARG_INT32(2) == -1)
+	{
+		numberOfCounters = NumberOfCounters;
+	}
+	else
+	{
+		numberOfCounters = PG_GETARG_INT32(2);
+	}
 	/*
 	 * Create stateTopn when the first non-null item arrive by using the item's type.
 	 * After stateTopn is created once, use it during aggregation and to pass the related
@@ -279,7 +288,7 @@ topn_add(PG_FUNCTION_ARGS)
 	}
 	else if (PG_ARGISNULL(0))
 	{
-		stateTopn = CreateTopnAggState(NumberOfCounters);
+		stateTopn = CreateTopnAggState(numberOfCounters);
 
 		jsonb = jsonb_from_cstring("{}", 2);
 	}
@@ -291,7 +300,7 @@ topn_add(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		stateTopn = CreateTopnAggState(NumberOfCounters);
+		stateTopn = CreateTopnAggState(numberOfCounters);
 
 		jsonb = PG_GETARG_JSONB(0);
 	}
@@ -301,7 +310,7 @@ topn_add(PG_FUNCTION_ARGS)
 	 * the stateTopn is not updated yet.
 	 */
 
-	MergeJsonbIntoTopnAggState(jsonb, stateTopn, NumberOfCounters);
+	MergeJsonbIntoTopnAggState(jsonb, stateTopn, numberOfCounters);
 
 	itemText = PG_GETARG_TEXT_P(1);
 	text_to_cstring_buffer(itemText, itemString, MAX_KEYSIZE);
@@ -316,7 +325,7 @@ topn_add(PG_FUNCTION_ARGS)
 	{
 		item->frequency = 1;
 
-		PruneHashTable(stateTopn->hashTable, NumberOfCounters, NumberOfCounters);
+		PruneHashTable(stateTopn->hashTable, numberOfCounters, numberOfCounters);
 	}
 
 	jsonb = MaterializeAggStateToJsonb(stateTopn);
@@ -336,7 +345,17 @@ topn_union(PG_FUNCTION_ARGS)
 	Jsonb *jsonbRight = NULL;
 	Jsonb *result = NULL;
 	TopnAggState *topn = NULL;
+	int numberOfCounters;
 
+	if (PG_GETARG_INT32(2) == -1)
+	{
+		numberOfCounters = NumberOfCounters;
+	}
+	else
+	{
+		numberOfCounters = PG_GETARG_INT32(2);
+	}
+	
 	jsonbLeft = PG_GETARG_JSONB(0);
 	jsonbRight = PG_GETARG_JSONB(1);
 
@@ -581,7 +600,7 @@ topn_union_trans1(PG_FUNCTION_ARGS)
 		numberOfCounters = PG_GETARG_INT32(2);
 
 		oldContext = MemoryContextSwitchTo(aggctx);
-		topnTrans = CreateTopnAggState(NumberOfCounters);
+		topnTrans = CreateTopnAggState(numberOfCounters);
 		MemoryContextSwitchTo(oldContext);
 	}
 	else
