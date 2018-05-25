@@ -347,7 +347,7 @@ topn_union(PG_FUNCTION_ARGS)
 	TopnAggState *topn = NULL;
 	int numberOfCounters;
 
-	if (PG_GETARG_INT32(2) == -1)
+	if (PG_ARGISNULL(2) || PG_GETARG_INT32(2) == -1 || PG_NARGS() == 2)
 	{
 		numberOfCounters = NumberOfCounters;
 	}
@@ -356,16 +356,21 @@ topn_union(PG_FUNCTION_ARGS)
 		numberOfCounters = PG_GETARG_INT32(2);
 	}
 	
-	jsonbLeft = PG_GETARG_JSONB(0);
+	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
+	{
+		PG_RETURN_NULL();
+	}
+
+	jsonbLeft = PG_GETARG_JSONB(0);	
 	jsonbRight = PG_GETARG_JSONB(1);
-
+	
 	/*allocate topn */
-	topn = CreateTopnAggState(NumberOfCounters);
+	topn = CreateTopnAggState(numberOfCounters);
 
-	MergeJsonbIntoTopnAggState(jsonbLeft, topn, NumberOfCounters);
-	MergeJsonbIntoTopnAggState(jsonbRight, topn, NumberOfCounters);
+	MergeJsonbIntoTopnAggState(jsonbLeft, topn, numberOfCounters);
+	MergeJsonbIntoTopnAggState(jsonbRight, topn, numberOfCounters);
 
-	PruneHashTable(topn->hashTable, NumberOfCounters, NumberOfCounters);
+	PruneHashTable(topn->hashTable, numberOfCounters, numberOfCounters);
 
 	result = MaterializeAggStateToJsonb(topn);
 

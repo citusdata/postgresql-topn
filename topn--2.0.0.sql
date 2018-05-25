@@ -1,28 +1,25 @@
 -- basic function
+CREATE TYPE topn AS (item text, frequency bigint);
+
 CREATE FUNCTION topn(jsonb, integer)
-    RETURNS TABLE(item text, frequency bigint)
+    RETURNS SETOF topn
     AS 'MODULE_PATHNAME'
     LANGUAGE C IMMUTABLE STRICT;
 
 CREATE FUNCTION topn_add(jsonb, text, integer default -1)
-  RETURNS jsonb
-  AS 'MODULE_PATHNAME'
-  LANGUAGE C IMMUTABLE;
+	RETURNS jsonb
+	AS 'MODULE_PATHNAME'
+	LANGUAGE C IMMUTABLE;
 
-CREATE FUNCTION topn_union(jsonb, jsonb, integer default -1)
-  RETURNS jsonb
-  AS 'MODULE_PATHNAME'
-  LANGUAGE C IMMUTABLE STRICT;
+CREATE FUNCTION topn_union(jsonb, jsonb)
+	RETURNS jsonb
+	AS 'MODULE_PATHNAME'
+	LANGUAGE C IMMUTABLE;
 
-CREATE FUNCTION topn_sum(j1 jsonb, j2 jsonb)
-  RETURNS jsonb
-  AS
-  $$
-  begin
-    return topn_union(j1, j2);
-  end
-  $$
-  LANGUAGE plpgsql IMMUTABLE STRICT;
+CREATE FUNCTION topn_union(jsonb, jsonb, integer)
+	RETURNS jsonb
+	AS 'MODULE_PATHNAME'
+	LANGUAGE C IMMUTABLE;
 
 --trans function
 CREATE FUNCTION topn_union_trans(internal, jsonb)
@@ -55,38 +52,38 @@ CREATE FUNCTION topn_pack(internal)
 -- Aggregates
 
 CREATE AGGREGATE topn_add_agg(text)(
-  SFUNC = topn_add_trans,
-  STYPE = internal,
-  SSPACE = 780000,
-  FINALFUNC = topn_pack
+	SFUNC = topn_add_trans,
+	STYPE = internal,
+	SSPACE = 780000,
+	FINALFUNC = topn_pack
 );
 
 CREATE AGGREGATE topn_add_agg(text, integer)(
 	SFUNC = topn_add_trans1,
 	STYPE = internal,
-  SSPACE = 780000,
+	SSPACE = 780000,
 	FINALFUNC = topn_pack
 );
 
 CREATE AGGREGATE topn_union_agg(jsonb)(
 	SFUNC = topn_union_trans,
 	STYPE = internal,
-  SSPACE = 780000,
+	SSPACE = 780000,
 	FINALFUNC = topn_pack
 );
 
 CREATE AGGREGATE topn_union_agg(jsonb, integer)(
-  SFUNC = topn_union_trans1,
-  STYPE = internal,
-  SSPACE = 780000,
-  FINALFUNC = topn_pack
+	SFUNC = topn_union_trans1,
+	STYPE = internal,
+	SSPACE = 780000,
+	FINALFUNC = topn_pack
 );
 
 CREATE OPERATOR + (
-			leftarg = jsonb,
-			rightarg = jsonb,
-			procedure = topn_sum,
-			commutator = +
+	leftarg = jsonb,
+	rightarg = jsonb,
+	procedure = topn_union,
+	commutator = +
 );
 
 COMMENT ON FUNCTION topn(top_items jsonb, n integer)
