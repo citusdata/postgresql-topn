@@ -267,7 +267,7 @@ topn_add(PG_FUNCTION_ARGS)
 	char itemString[MAX_KEYSIZE];
 	int numberOfCounters;
 
-	if (PG_GETARG_INT32(2) == -1)
+	if (PG_ARGISNULL(2) || PG_NARGS() < 3 || PG_GETARG_INT32(2) <= 0)
 	{
 		numberOfCounters = NumberOfCounters;
 	}
@@ -347,7 +347,7 @@ topn_union(PG_FUNCTION_ARGS)
 	TopnAggState *topn = NULL;
 	int numberOfCounters;
 
-	if (PG_ARGISNULL(2) || PG_GETARG_INT32(2) == -1 || PG_NARGS() == 2)
+	if (PG_ARGISNULL(2) || PG_NARGS() < 3 || PG_GETARG_INT32(2) <= 0)
 	{
 		numberOfCounters = NumberOfCounters;
 	}

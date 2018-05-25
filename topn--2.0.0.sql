@@ -6,7 +6,12 @@ CREATE FUNCTION topn(jsonb, integer)
     AS 'MODULE_PATHNAME'
     LANGUAGE C IMMUTABLE STRICT;
 
-CREATE FUNCTION topn_add(jsonb, text, integer default -1)
+CREATE FUNCTION topn_add(jsonb, text)
+	RETURNS jsonb
+	AS 'MODULE_PATHNAME'
+	LANGUAGE C IMMUTABLE;
+
+CREATE FUNCTION topn_add(jsonb, text, integer)
 	RETURNS jsonb
 	AS 'MODULE_PATHNAME'
 	LANGUAGE C IMMUTABLE;
@@ -88,15 +93,19 @@ CREATE OPERATOR + (
 
 COMMENT ON FUNCTION topn(top_items jsonb, n integer)
     IS 'get the top n items from top_items';
-COMMENT ON FUNCTION topn_add(top_items jsonb, item text, size integer)
+COMMENT ON FUNCTION topn_add(top_items jsonb, item text)
     IS 'insert the item into the top_items counter';
-COMMENT ON FUNCTION topn_union(top_items jsonb, top_items2 jsonb, size integer)
+COMMENT ON FUNCTION topn_add(top_items jsonb, item text, size integer)
+    IS 'insert the item into the top_items counter with a custom number_of_counters';
+COMMENT ON FUNCTION topn_union(top_items jsonb, top_items2 jsonb)
     IS 'take the union of the two top_items counter';
+COMMENT ON FUNCTION topn_union(top_items jsonb, top_items2 jsonb, size integer)
+    IS 'take the union of the two top_items counter with a custom number_of_counters';
 COMMENT ON AGGREGATE topn_add_agg(item text, size integer)
-    IS 'aggregate the items into one counter';
-    COMMENT ON AGGREGATE topn_add_agg(item text)
+    IS 'aggregate the items into one counter with a custom number_of_counters';
+COMMENT ON AGGREGATE topn_add_agg(item text)
     IS 'aggregate the items into one counter';
 COMMENT ON AGGREGATE topn_union_agg(item_counter jsonb)
     IS 'aggregate the counters into one counter';
-    COMMENT ON AGGREGATE topn_union_agg(item_counter jsonb, size integer)
-    IS 'aggregate the counters into one counter';
+COMMENT ON AGGREGATE topn_union_agg(item_counter jsonb, size integer)
+    IS 'aggregate the counters into one counter with a custom number_of_counters';
