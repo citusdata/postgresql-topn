@@ -52,7 +52,7 @@ declare
   i record;
 begin
   for i in 1..5 loop
-    Insert into jsonb_table (select topn_union(jsonb_column, NULL) from jsonb_table);
+    Insert into jsonb_table (select jsonb_column + NULL from jsonb_table);
   end loop;
 end;
 $$
@@ -86,4 +86,31 @@ SELECT (topn(topn_union_agg(jsonb_column), 10)).* from jsonb_table;
  SA   |        20
  TEST |        10
 (3 rows)
+
+SELECT (topn(topn_union_agg(jsonb_column, 2), 10)).* from jsonb_table;
+ item | frequency 
+------+-----------
+ AS   |        30
+ SA   |        20
+(2 rows)
+
+SELECT topn_union_agg(agg) 
+FROM (
+    SELECT (jsonb_column + jsonb_column) as agg 
+    FROM jsonb_table
+    )a;
+          topn_union_agg          
+----------------------------------
+ {"AS": 60, "SA": 40, "TEST": 20}
+(1 row)
+
+SELECT topn_union_agg(agg, 2) 
+FROM (
+    SELECT (jsonb_column + jsonb_column) as agg 
+    FROM jsonb_table
+    )a;
+    topn_union_agg    
+----------------------
+ {"AS": 60, "SA": 40}
+(1 row)
 

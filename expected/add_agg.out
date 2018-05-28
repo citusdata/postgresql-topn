@@ -115,6 +115,42 @@ SELECT topn(topn_add_agg(int_column::text), 4) FROM numbers;
  (4,3)
 (4 rows)
 
+--check aggregates for fixed size types like integer with custom counter
+SELECT topn(topn_add_agg(int_column::text, 2), 3) FROM numbers WHERE int_column < 3;
+ topn  
+-------
+ (2,6)
+ (0,2)
+(2 rows)
+
+SELECT topn(topn_add_agg(int_column::text, 2), 4) FROM numbers WHERE int_column < 4;
+ topn  
+-------
+ (2,6)
+ (3,4)
+(2 rows)
+
+SELECT topn(topn_add_agg(int_column::text, 2), 4) FROM numbers WHERE int_column < 5;
+ topn  
+-------
+ (2,6)
+ (3,4)
+(2 rows)
+
+SELECT topn(topn_add_agg(int_column::text, 2), 4) FROM numbers WHERE int_column < 6;
+ topn  
+-------
+ (5,7)
+ (2,6)
+(2 rows)
+
+SELECT topn(topn_add_agg(int_column::text, 2), 4) FROM numbers;
+ topn  
+-------
+ (5,7)
+ (2,6)
+(2 rows)
+
 --check aggregates for variable length types like text
 SELECT topn(topn_add_agg(text_column), 0) FROM strings WHERE text_column < '0';
  topn 
@@ -188,6 +224,13 @@ SELECT topn(topn_add_agg(cidr_column::text), 4) FROM cidr_table;
  (192.168.1.0/24,6)
 (4 rows)
 
+SELECT topn(topn_add_agg(cidr_column::text, 2), 4) FROM cidr_table;
+          topn          
+------------------------
+ (192.168.5.0/24,70000)
+ (192.168.0.0/24,15000)
+(2 rows)
+
 --check aggregates for inet type
 SELECT topn(topn_add_agg(inet_column::text), 4) FROM inet_table;
           topn           
@@ -197,4 +240,11 @@ SELECT topn(topn_add_agg(inet_column::text), 4) FROM inet_table;
  (192.168.100.128/23,20)
  (192.168.2.1/32,6)
 (4 rows)
+
+SELECT topn(topn_add_agg(inet_column::text, 2), 4) FROM inet_table;
+          topn          
+------------------------
+ (10.1.2.3/32,70000)
+ (192.168.2.1/24,15000)
+(2 rows)
 

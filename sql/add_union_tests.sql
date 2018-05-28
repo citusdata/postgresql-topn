@@ -57,7 +57,7 @@ declare
   i record;
 begin
   for i in 1..5 loop
-    Insert into jsonb_table (select topn_union(jsonb_column, NULL) from jsonb_table);
+    Insert into jsonb_table (select jsonb_column + NULL from jsonb_table);
   end loop;
 end;
 $$
@@ -88,3 +88,15 @@ $$
 ;
 
 SELECT (topn(topn_union_agg(jsonb_column), 10)).* from jsonb_table;
+SELECT (topn(topn_union_agg(jsonb_column, 2), 10)).* from jsonb_table;
+SELECT topn_union_agg(agg) 
+FROM (
+    SELECT (jsonb_column + jsonb_column) as agg 
+    FROM jsonb_table
+    )a;
+
+SELECT topn_union_agg(agg, 2) 
+FROM (
+    SELECT (jsonb_column + jsonb_column) as agg 
+    FROM jsonb_table
+    )a;

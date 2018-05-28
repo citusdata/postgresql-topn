@@ -69,6 +69,13 @@ SELECT topn(topn_add_agg(int_column::text), 4) FROM numbers WHERE int_column < 5
 SELECT topn(topn_add_agg(int_column::text), 4) FROM numbers WHERE int_column < 6;
 SELECT topn(topn_add_agg(int_column::text), 4) FROM numbers;
 
+--check aggregates for fixed size types like integer with custom counter
+SELECT topn(topn_add_agg(int_column::text, 2), 3) FROM numbers WHERE int_column < 3;
+SELECT topn(topn_add_agg(int_column::text, 2), 4) FROM numbers WHERE int_column < 4;
+SELECT topn(topn_add_agg(int_column::text, 2), 4) FROM numbers WHERE int_column < 5;
+SELECT topn(topn_add_agg(int_column::text, 2), 4) FROM numbers WHERE int_column < 6;
+SELECT topn(topn_add_agg(int_column::text, 2), 4) FROM numbers;
+
 --check aggregates for variable length types like text
 SELECT topn(topn_add_agg(text_column), 0) FROM strings WHERE text_column < '0';
 SELECT topn(topn_add_agg(text_column), 1) FROM strings WHERE text_column < '1';
@@ -81,6 +88,8 @@ SELECT topn(topn_add_agg(text_column), 4) FROM strings;
 
 --check aggregates for cidr type
 SELECT topn(topn_add_agg(cidr_column::text), 4) FROM cidr_table;
+SELECT topn(topn_add_agg(cidr_column::text, 2), 4) FROM cidr_table;
 
 --check aggregates for inet type
 SELECT topn(topn_add_agg(inet_column::text), 4) FROM inet_table;
+SELECT topn(topn_add_agg(inet_column::text, 2), 4) FROM inet_table;

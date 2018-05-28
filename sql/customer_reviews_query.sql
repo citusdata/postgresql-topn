@@ -66,3 +66,15 @@ WINDOW
 ORDER BY 
   1
 LIMIT 5;
+
+-- The same query with custome counter
+SELECT 
+  date, 
+  topn_union_agg(agg_data, 3) OVER seven_days 
+FROM 
+  daily_populars 
+WINDOW 
+  seven_days AS (ORDER BY date ASC ROWS 6 PRECEDING)
+ORDER BY 
+  1
+LIMIT 5;
