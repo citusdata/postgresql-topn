@@ -1,3 +1,7 @@
+### topn v2.1.0 (July 09, 2018) ###
+
+* Adds a return type for `topn` function
+
 ### topn v2.0.1 (October 31, 2017) ###
 
 * Fixes a bug for using with window functions
