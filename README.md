@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/citusdata/postgresql-topn.svg?branch=master)](https://travis-ci.org/citusdata/postgresql-topn)
 # TopN
 
 `TopN` is an open source PostgreSQL extension that returns the top values in a database according to some criteria. TopN takes elements in a data set, ranks them according to a given rule, and picks the top elements in that data set. When doing this, TopN applies an approximation algorithm to provide fast results using few compute and memory resources.
