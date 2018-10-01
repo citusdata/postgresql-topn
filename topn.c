@@ -182,7 +182,11 @@ topn(PG_FUNCTION_ARGS)
 
 		oldcontext = MemoryContextSwitchTo(functionCallContext->multi_call_memory_ctx);
 
+#if PG_VERSION_NUM < 110000
 		jsonb = PG_GETARG_JSONB(0);
+#else
+		jsonb = PG_GETARG_JSONB_P(0);
+#endif
 		container = &jsonb->root;
 
 		jsonbElementCount = JsonContainerSize(container);
@@ -270,7 +274,11 @@ topn_add(PG_FUNCTION_ARGS)
 	{
 		jsonb = jsonb_from_cstring("{}", 2);
 
+#if PG_VERSION_NUM < 110000
 		PG_RETURN_JSONB(jsonb);
+#else
+		PG_RETURN_JSONB_P(jsonb);
+#endif
 	}
 	else if (PG_ARGISNULL(0))
 	{
@@ -280,15 +288,23 @@ topn_add(PG_FUNCTION_ARGS)
 	}
 	else if (PG_ARGISNULL(1))
 	{
+#if PG_VERSION_NUM < 110000
 		jsonb = PG_GETARG_JSONB(0);
-
 		PG_RETURN_JSONB(jsonb);
+#else
+		jsonb = PG_GETARG_JSONB_P(0);
+		PG_RETURN_JSONB_P(jsonb);
+#endif
 	}
 	else
 	{
 		stateTopn = CreateTopnAggState();
 
+#if PG_VERSION_NUM < 110000
 		jsonb = PG_GETARG_JSONB(0);
+#else
+		jsonb = PG_GETARG_JSONB_P(0);
+#endif
 	}
 
 	/*
@@ -316,7 +332,11 @@ topn_add(PG_FUNCTION_ARGS)
 
 	jsonb = MaterializeAggStateToJsonb(stateTopn);
 
+#if PG_VERSION_NUM < 110000
 	PG_RETURN_JSONB(jsonb);
+#else
+	PG_RETURN_JSONB_P(jsonb);
+#endif
 }
 
 
@@ -332,8 +352,13 @@ topn_union(PG_FUNCTION_ARGS)
 	Jsonb *result = NULL;
 	TopnAggState *topn = NULL;
 
+#if PG_VERSION_NUM < 110000
 	jsonbLeft = PG_GETARG_JSONB(0);
 	jsonbRight = PG_GETARG_JSONB(1);
+#else
+	jsonbLeft = PG_GETARG_JSONB_P(0);
+	jsonbRight = PG_GETARG_JSONB_P(1);
+#endif
 
 	/*allocate topn */
 	topn = CreateTopnAggState();
@@ -345,7 +370,11 @@ topn_union(PG_FUNCTION_ARGS)
 
 	result = MaterializeAggStateToJsonb(topn);
 
+#if PG_VERSION_NUM < 110000
 	PG_RETURN_JSONB(result);
+#else
+	PG_RETURN_JSONB_P(result);
+#endif
 }
 
 
@@ -452,7 +481,11 @@ topn_union_trans(PG_FUNCTION_ARGS)
 
 	if (!PG_ARGISNULL(1))
 	{
+#if PG_VERSION_NUM < 110000
 		jsonbToBeAdded = PG_GETARG_JSONB(1);
+#else
+		jsonbToBeAdded = PG_GETARG_JSONB_P(1);
+#endif
 		topnNewItem = CreateTopnAggState();
 
 		MergeJsonbIntoTopnAggState(jsonbToBeAdded, topnNewItem);
@@ -513,7 +546,11 @@ topn_pack(PG_FUNCTION_ARGS)
 		jsonb = jsonb_from_cstring(emptyJsonb->data, emptyJsonb->len);
 	}
 
+#if PG_VERSION_NUM < 110000
 	PG_RETURN_JSONB(jsonb);
+#else
+	PG_RETURN_JSONB_P(jsonb);
+#endif
 }
 
 
