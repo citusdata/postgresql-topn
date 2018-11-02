@@ -1,3 +1,7 @@
+### topn v2.2.0 (November 02, 2018) ###
+
+* Adds PostgreSQL 11 support
+
 ### topn v2.1.0 (July 09, 2018) ###
 
 * Adds a return type for `topn` function
