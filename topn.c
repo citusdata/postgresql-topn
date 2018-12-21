@@ -45,6 +45,11 @@ static int32 UnionFactor = 3;
 #define MAX_KEYSIZE 256
 #define MAX_FREQUENCY INT64_MAX
 
+#if PG_VERSION_NUM >= 110000
+#define PG_GETARG_JSONB(int) PG_GETARG_JSONB_P(int)
+#define PG_RETURN_JSONB(jsonb) PG_RETURN_JSONB_P(jsonb)
+#endif
+
 /* Taken from jsonb.c */
 #define JSONB_MAX_PAIRS (Min(MaxAllocSize / sizeof(JsonbPair), JB_CMASK))
 
