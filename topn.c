@@ -218,7 +218,12 @@ topn(PG_FUNCTION_ARGS)
 		functionCallContext->user_fctx = sortedTopnArray;
 
 		/* pass the tuple descriptor to be returned to the multi call context*/
-		tupleDescriptor = CreateTemplateTupleDesc(2, false);
+		tupleDescriptor = 
+#if PG_VERSION_NUM < 120000
+			CreateTemplateTupleDesc(2, false);
+#else
+			CreateTemplateTupleDesc(2);
+#endif
 		TupleDescInitEntry(tupleDescriptor, (AttrNumber) 1, "item",
 						   TEXTOID, -1, 0);
 		TupleDescInitEntry(tupleDescriptor, (AttrNumber) 2, "frequency",
