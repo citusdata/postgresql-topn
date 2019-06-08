@@ -80,19 +80,19 @@ PG_FUNCTION_INFO_V1(topn_add);
 PG_FUNCTION_INFO_V1(topn_union);
 PG_FUNCTION_INFO_V1(topn_add_trans);
 PG_FUNCTION_INFO_V1(topn_union_trans);
+PG_FUNCTION_INFO_V1(topn_union_internal);
+PG_FUNCTION_INFO_V1(topn_serialize);
+PG_FUNCTION_INFO_V1(topn_deserialize);
 PG_FUNCTION_INFO_V1(topn_pack);
 
 
 /*
  * TopnAggState is the main struct to handle aggregate functions.
- * It is used as an internal type and it is actually an alone HTAB.
- * The data is being aggregate in HTAB since theoretically its enter/delete
+ * It is used as an internal type and it is actually a lone HTAB.
+ * The data is being aggregated in HTAB since theoretically its enter/delete
  * operations are in constant time and it has a dynamic size.
  */
-typedef struct TopnAggState
-{
-	HTAB *hashTable;
-} TopnAggState;
+typedef struct TopnAggState TopnAggState;
 
 /*
  * FrequentTopnItem is the struct to keep frequent items and their frequencies
@@ -134,7 +134,7 @@ static int compareFrequentTopnItem(const void *item1, const void *item2);
 static Datum topnGetDatum(FrequentTopnItem *topnItem, TupleDesc tupleDescriptor);
 static void PruneHashTable(HTAB *hashTable, int itemLimit, int numberOfRemainingElements);
 static Jsonb * MaterializeAggStateToJsonb(TopnAggState *topn);
-static void InitialiseTopnHashTable(TopnAggState *stateTopn);
+static HTAB * topnHashtable(TopnAggState *topn);
 static void MergeTopn(TopnAggState *left, TopnAggState *right);
 static void IncreaseItemFrequency(FrequentTopnItem *item, Frequency amount);
 static void InsertPairs(FrequentTopnItem *item, StringInfo jsonbStr);
@@ -317,7 +317,7 @@ topn_add(PG_FUNCTION_ARGS)
 	}
 
 	/*
-	 * Create HashTable and update fields of the stateTopn with the first item if
+	 * Update fields of the stateTopn with the first item if
 	 * the stateTopn is not updated yet.
 	 */
 
@@ -326,7 +326,7 @@ topn_add(PG_FUNCTION_ARGS)
 	itemText = PG_GETARG_TEXT_P(1);
 	text_to_cstring_buffer(itemText, itemString, MAX_KEYSIZE);
 
-	item = hash_search(stateTopn->hashTable, (void *) itemString,
+	item = hash_search(topnHashtable(stateTopn), (void *) itemString,
 					   HASH_ENTER, &found);
 	if (found)
 	{
@@ -336,7 +336,7 @@ topn_add(PG_FUNCTION_ARGS)
 	{
 		item->frequency = 1;
 
-		PruneHashTable(stateTopn->hashTable, NumberOfCounters, NumberOfCounters);
+		PruneHashTable(topnHashtable(stateTopn), NumberOfCounters, NumberOfCounters);
 	}
 
 	jsonb = MaterializeAggStateToJsonb(stateTopn);
@@ -366,7 +366,7 @@ topn_union(PG_FUNCTION_ARGS)
 	MergeJsonbIntoTopnAggState(jsonbLeft, topn);
 	MergeJsonbIntoTopnAggState(jsonbRight, topn);
 
-	PruneHashTable(topn->hashTable, NumberOfCounters, NumberOfCounters);
+	PruneHashTable(topnHashtable(topn), NumberOfCounters, NumberOfCounters);
 
 	result = MaterializeAggStateToJsonb(topn);
 
@@ -420,7 +420,7 @@ topn_add_trans(PG_FUNCTION_ARGS)
 	textInput = PG_GETARG_TEXT_P(1);
 
 	text_to_cstring_buffer(textInput, charInput, MAX_KEYSIZE);
-	item = hash_search(topnTrans->hashTable, (void *) charInput, HASH_ENTER, &found);
+	item = hash_search(topnHashtable(topnTrans), (void *) charInput, HASH_ENTER, &found);
 	if (found)
 	{
 		IncreaseItemFrequency(item, 1);
@@ -428,10 +428,10 @@ topn_add_trans(PG_FUNCTION_ARGS)
 	else
 	{
 		int itemLimit = NumberOfCounters * UnionFactor;
-		int remainingElements = hash_get_num_entries(topnTrans->hashTable) / 2;
+		int remainingElements = hash_get_num_entries(topnHashtable(topnTrans)) / 2;
 		item->frequency = 1;
 
-		PruneHashTable(topnTrans->hashTable, itemLimit, remainingElements);
+		PruneHashTable(topnHashtable(topnTrans), itemLimit, remainingElements);
 	}
 
 	PG_RETURN_POINTER(topnTrans);
@@ -488,6 +488,127 @@ topn_union_trans(PG_FUNCTION_ARGS)
 		/* No need to check the size again since it is already checked in MergeTopn */
 	}
 
+	PG_RETURN_POINTER(topnTrans);
+}
+
+
+/*
+ * topn_serialize function converts TopnAggState to bytea
+ */
+Datum
+topn_serialize(PG_FUNCTION_ARGS)
+{
+	Size topnArraySize;
+	TopnAggState *topnTrans = (TopnAggState *) PG_GETARG_POINTER(0);
+	HASH_SEQ_STATUS status;
+	FrequentTopnItem *currentTask = NULL;
+	bytea *ret;
+	char *bpPtr; /* Cursor for writing into ret */
+	long hashTableSize = hash_get_num_entries(topnHashtable(topnTrans));
+
+	/* it must be called as a transition routine or it fails */
+	if (!AggCheckCallContext(fcinfo, NULL))
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_DATA_EXCEPTION),
+				 errmsg("topn_serialize outside transition context")));
+	}
+
+	topnArraySize = sizeof(FrequentTopnItem) * hashTableSize;
+	ret = palloc(VARHDRSZ + topnArraySize);
+	SET_VARSIZE(ret, VARHDRSZ + topnArraySize);
+	bpPtr = (void *) VARDATA(ret);
+
+	hash_seq_init(&status, topnHashtable(topnTrans));
+
+	while ((currentTask = (FrequentTopnItem *) hash_seq_search(&status)) != NULL)
+	{
+		memcpy(bpPtr, currentTask, sizeof(FrequentTopnItem));
+		bpPtr += sizeof(FrequentTopnItem);
+	}
+
+	PG_RETURN_BYTEA_P(ret);
+}
+
+
+/*
+ * topn_deserialize function converts bytea to TopnAggState
+ */
+Datum
+topn_deserialize(PG_FUNCTION_ARGS)
+{
+	MemoryContext aggctx;
+	MemoryContext oldContext;
+	TopnAggState *topnTrans;
+	bytea *bp = PG_GETARG_BYTEA_P(0);
+	char *bpPtr;
+	char *bpPtrEnd;
+	FrequentTopnItem *item;
+	size_t bpsz;
+
+	/* it must be called as a transition routine or it fails */
+	if (!AggCheckCallContext(fcinfo, &aggctx))
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_DATA_EXCEPTION),
+				 errmsg("topn_deserialize outside transition context")));
+	}
+
+	oldContext = MemoryContextSwitchTo(aggctx);
+	topnTrans = CreateTopnAggState();
+	MemoryContextSwitchTo(oldContext);
+	bpsz = VARSIZE(bp) - VARHDRSZ;
+
+	for (bpPtr = VARDATA(bp), bpPtrEnd = bpPtr + bpsz;
+		 bpPtr < bpPtrEnd;
+		 bpPtr += sizeof(FrequentTopnItem))
+	{
+		item = hash_search(topnHashtable(topnTrans), bpPtr, HASH_ENTER, NULL);
+		memcpy(item, bpPtr, sizeof(FrequentTopnItem));
+	}
+
+	PG_RETURN_POINTER(topnTrans);
+}
+
+
+/*
+ * topn_union_internal function is the combinefunc for aggregates.
+ */
+Datum
+topn_union_internal(PG_FUNCTION_ARGS)
+{
+	MemoryContext aggctx;
+	MemoryContext oldContext;
+	TopnAggState *topnTrans;
+
+	/* it must be called as a transition routine or it fails */
+	if (!AggCheckCallContext(fcinfo, &aggctx))
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_DATA_EXCEPTION),
+				 errmsg("topn_union_internal outside transition context")));
+	}
+
+	/*
+	 * If the first argument is a NULL on first call, init an empty topn.
+	 * Otherwise, take the given argument and continue the process on it.
+	 */
+	if (PG_ARGISNULL(0))
+	{
+		oldContext = MemoryContextSwitchTo(aggctx);
+		topnTrans = CreateTopnAggState();
+		MemoryContextSwitchTo(oldContext);
+	}
+	else
+	{
+		topnTrans = (TopnAggState *) (PG_GETARG_POINTER(0));
+	}
+
+	if (!PG_ARGISNULL(1))
+	{
+		MergeTopn(topnTrans, (TopnAggState *) (PG_GETARG_POINTER(1)));
+	}
+
 
 	PG_RETURN_POINTER(topnTrans);
 }
@@ -505,9 +626,6 @@ topn_pack(PG_FUNCTION_ARGS)
 	TopnAggState *topnTrans;
 	StringInfo emptyJsonb = NULL;
 
-	emptyJsonb = makeStringInfo();
-	appendStringInfo(emptyJsonb, "{}");
-
 	/* We must be called as a transition routine or we fail. */
 	if (!AggCheckCallContext(fcinfo, &aggctx))
 	{
@@ -520,21 +638,14 @@ topn_pack(PG_FUNCTION_ARGS)
 	if (!PG_ARGISNULL(0))
 	{
 		topnTrans = (TopnAggState *) PG_GETARG_POINTER(0);
-
-		/* Was the aggregation uninitialized? */
-		if (!topnTrans->hashTable)
-		{
-			jsonb = jsonb_from_cstring(emptyJsonb->data, emptyJsonb->len);
-		}
-		else
-		{
-			PruneHashTable(topnTrans->hashTable, NumberOfCounters, NumberOfCounters);
-
-			jsonb = MaterializeAggStateToJsonb(topnTrans);
-		}
+		PruneHashTable(topnHashtable(topnTrans), NumberOfCounters, NumberOfCounters);
+		jsonb = MaterializeAggStateToJsonb(topnTrans);
 	}
 	else
 	{
+		emptyJsonb = makeStringInfo();
+		appendStringInfo(emptyJsonb, "{}");
+
 		jsonb = jsonb_from_cstring(emptyJsonb->data, emptyJsonb->len);
 	}
 
@@ -606,13 +717,16 @@ FrequencyArrayFromJsonb(JsonbContainer *container)
 static TopnAggState *
 CreateTopnAggState(void)
 {
-	TopnAggState *topn = NULL;
-	Size topnSize = sizeof(TopnAggState);
+	int32 hashTableSize = 0;
+	HASHCTL hashInfo;
 
-	topn = (TopnAggState *) palloc0(topnSize);
-	InitialiseTopnHashTable(topn);
-
-	return topn;
+	hashTableSize = (NumberOfCounters / 0.75) + 1;
+	memset(&hashInfo, 0, sizeof(hashInfo));
+	hashInfo.keysize = MAX_KEYSIZE;
+	hashInfo.entrysize = sizeof(FrequentTopnItem);
+	hashInfo.hcxt = CurrentMemoryContext;
+	return (TopnAggState *) hash_create("Item Frequency Map", hashTableSize, &hashInfo,
+										HASH_ELEM | HASH_CONTEXT);
 }
 
 
@@ -658,7 +772,7 @@ MergeJsonbIntoTopnAggState(Jsonb *jsonb, TopnAggState *topn)
 				valueNumAsString = numeric_normalize(itemJsonbValue.val.numeric);
 				frequencyValue = atol(valueNumAsString);
 
-				item = hash_search(topn->hashTable, (void *) key->data,
+				item = hash_search(topnHashtable(topn), (void *) key->data,
 								   HASH_ENTER, &found);
 				if (found)
 				{
@@ -669,10 +783,10 @@ MergeJsonbIntoTopnAggState(Jsonb *jsonb, TopnAggState *topn)
 					item->frequency = frequencyValue;
 				}
 
-				sizeOfHashTable = hash_get_num_entries(topn->hashTable);
+				sizeOfHashTable = hash_get_num_entries(topnHashtable(topn));
 				remainingElements = sizeOfHashTable / 2;
 				itemLimit = NumberOfCounters * UnionFactor;
-				PruneHashTable(topn->hashTable, itemLimit, remainingElements);
+				PruneHashTable(topnHashtable(topn), itemLimit, remainingElements);
 			}
 		}
 	}
@@ -744,7 +858,6 @@ PruneHashTable(HTAB *hashTable, int itemLimit, int numberOfRemainingElements)
 	bool itemAlreadyHashed = false;
 	HASH_SEQ_STATUS status;
 	FrequentTopnItem *currentTask = NULL;
-	FrequentTopnItem *frequentTopnItem = NULL;
 	int index = 0;
 	int hashTableSize = hash_get_num_entries(hashTable);
 
@@ -755,18 +868,13 @@ PruneHashTable(HTAB *hashTable, int itemLimit, int numberOfRemainingElements)
 
 	/* create an array to copy top-n items and sort them later */
 	topnArraySize = sizeof(FrequentTopnItem) * hashTableSize;
-	sortedTopnArray = (FrequentTopnItem *) palloc0(topnArraySize);
+	sortedTopnArray = (FrequentTopnItem *) palloc(topnArraySize);
 
 	hash_seq_init(&status, hashTable);
 
 	while ((currentTask = (FrequentTopnItem *) hash_seq_search(&status)) != NULL)
 	{
-		frequentTopnItem = palloc0(sizeof(FrequentTopnItem));
-		memcpy(frequentTopnItem->key, currentTask->key,
-			   sizeof(frequentTopnItem->key));
-		frequentTopnItem->frequency = currentTask->frequency;
-		sortedTopnArray[topnIndex] = *frequentTopnItem;
-
+		memcpy(&sortedTopnArray[topnIndex], currentTask, sizeof(*currentTask));
 		topnIndex++;
 	}
 
@@ -796,7 +904,7 @@ MaterializeAggStateToJsonb(TopnAggState *topn)
 
 	appendStringInfo(jsonbStr, "{");
 
-	hash_seq_init(&status, topn->hashTable);
+	hash_seq_init(&status, topnHashtable(topn));
 	if ((currentTask = (FrequentTopnItem *) hash_seq_search(&status)) != NULL)
 	{
 		InsertPairs(currentTask, jsonbStr);
@@ -814,23 +922,11 @@ MaterializeAggStateToJsonb(TopnAggState *topn)
 }
 
 
-/*
- * InitialiseTopnHashTable is used in topn_add and topn_union to create
- * HashTable according to the type specifications of itemTypeCacheEntry.
- */
-static void
-InitialiseTopnHashTable(TopnAggState *stateTopn)
+/* Return TopnAggState's HTAB reference. */
+static HTAB *
+topnHashtable(TopnAggState *topn)
 {
-	int32 hashTableSize = 0;
-	HASHCTL hashInfo;
-
-	hashTableSize = (NumberOfCounters / 0.75) + 1;
-	memset(&hashInfo, 0, sizeof(hashInfo));
-	hashInfo.keysize = MAX_KEYSIZE;
-	hashInfo.entrysize = sizeof(FrequentTopnItem);
-	hashInfo.hcxt = CurrentMemoryContext;
-	stateTopn->hashTable = hash_create("Item Frequency Map", hashTableSize, &hashInfo,
-									   HASH_ELEM | HASH_CONTEXT);
+	return (HTAB *) topn;
 }
 
 
@@ -848,17 +944,16 @@ MergeTopn(TopnAggState *destination, TopnAggState *source)
 	char *key = NULL;
 	FrequentTopnItem *item = NULL;
 
-	hash_seq_init(&status, source->hashTable);
+	hash_seq_init(&status, topnHashtable(source));
 
-	currentTask = (FrequentTopnItem *) hash_seq_search(&status);
-	while (currentTask != NULL)
+	while ((currentTask = (FrequentTopnItem *) hash_seq_search(&status)) != NULL)
 	{
 		int sizeOfHashTable = 0;
 		int remainingElements = 0;
 		int itemLimit = 0;
 		key = currentTask->key;
 
-		item = hash_search(destination->hashTable, (void *) key, HASH_ENTER, &found);
+		item = hash_search(topnHashtable(destination), (void *) key, HASH_ENTER, &found);
 
 		if (found)
 		{
@@ -869,13 +964,11 @@ MergeTopn(TopnAggState *destination, TopnAggState *source)
 			item->frequency = currentTask->frequency;
 		}
 
-		sizeOfHashTable = hash_get_num_entries(destination->hashTable);
+		sizeOfHashTable = hash_get_num_entries(topnHashtable(destination));
 		itemLimit = NumberOfCounters * UnionFactor;
 		remainingElements = sizeOfHashTable / 2;
 
-		PruneHashTable(destination->hashTable, itemLimit, remainingElements);
-
-		currentTask = (FrequentTopnItem *) hash_seq_search(&status);
+		PruneHashTable(topnHashtable(destination), itemLimit, remainingElements);
 	}
 }
 
