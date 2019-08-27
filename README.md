@@ -90,17 +90,17 @@ INSERT INTO popular_products
 From this table, you can compute the most popular/reviewed product for each day, in the blink of an eye.
 
 ```SQL
-SELECT review_date, (topn(agg_data, 1)).* 
-FROM popular_products 
+SELECT review_date, (topn(agg_data, 1)).*
+FROM popular_products
 ORDER BY review_date;
 ```
 
 You can also instantly find the top 10 reviewed products across any time interval, in this case January.
 
 ```SQL
-SELECT (topn(topn_union_agg(agg_data), 10)).* 
-FROM popular_products 
-WHERE review_date >= '2000-01-01' AND review_date < '2000-02-01' 
+SELECT (topn(topn_union_agg(agg_data), 10)).*
+FROM popular_products
+WHERE review_date >= '2000-01-01' AND review_date < '2000-02-01'
 ORDER BY 2 DESC;
 ```
 
@@ -108,10 +108,10 @@ Or, you can quickly find the most reviewed product for each month in 2000.
 
 ```SQL
 SELECT date_trunc('month', review_date) AS review_month,
-       (topn(topn_union_agg(agg_data), 1)).* 
-FROM popular_products 
-WHERE review_date >= '2000-01-01' AND review_date < '2001-01-01' 
-GROUP BY review_month 
+       (topn(topn_union_agg(agg_data), 1)).*
+FROM popular_products
+WHERE review_date >= '2000-01-01' AND review_date < '2001-01-01'
+GROUP BY review_month
 ORDER BY review_month;
 ```
 
@@ -144,7 +144,7 @@ Takes the union of both `JSONB`s and returns a new `JSONB`.
 Sets the number of counters to be tracked in a `JSONB`. If at some point, the current number of counters exceed `topn.number_of_counters` * 3, the list is pruned. The default value is 1000 for `topn.number_of_counters`. When you increase this setting, `TopN` uses more space and provides more accurate estimates.
 
 # Compatibility
-`TopN` is compatible with PostgreSQL 9.6, and 10, 11, 12 releases. `TopN` is also compatible with all supported Citus releases, including Citus 6.x and 7.x. If you need to run `TopN` on a different version of PostgreSQL or Citus, please open an issue. Opening a pull request (PR) is also highly appreciated.
+`TopN` is compatible with PostgreSQL 9.6, 10, 11, 12 releases. `TopN` is also compatible with all supported Citus releases, including Citus 6.x and 7.x. If you need to run `TopN` on a different version of PostgreSQL or Citus, please open an issue. Opening a pull request (PR) is also highly appreciated.
 
 # Attributions
 The `TopN` extension to Postgres is developed and maintained by the Citus Data team. Citus Data's flagship product, the [Citus](https://github.com/citusdata/citus) distributed database, is an open source extension that distributes Postgres across many machines.

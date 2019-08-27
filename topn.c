@@ -218,7 +218,7 @@ topn(PG_FUNCTION_ARGS)
 		functionCallContext->user_fctx = sortedTopnArray;
 
 		/* pass the tuple descriptor to be returned to the multi call context*/
-		tupleDescriptor = 
+		tupleDescriptor =
 #if PG_VERSION_NUM < 120000
 			CreateTemplateTupleDesc(2, false);
 #else
