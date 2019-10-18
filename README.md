@@ -11,7 +11,7 @@ TopN becomes helpful when serving customer-facing dashboards or running analytic
 `TopN` is used by customers in production to serve real-time analytics queries over terabytes of data.
 
 ## Why use TopN
-Calculating TopN elements in a set by by applying count, sort, and limit is simple. As data sizes increase however, this method becomes slow and resource intensive.
+Calculating TopN elements in a set by applying count, sort, and limit is simple. As data sizes increase however, this method becomes slow and resource intensive.
 
 The open source `TopN` extension enables you to serve instant and approximate results to TopN queries. To do this, you first materialize top values according to some criteria in a data type. You can then incrementally update these top values, or merge them on-demand across different time intervals.
 
