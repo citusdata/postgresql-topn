@@ -2,7 +2,7 @@
 
 MODULES = topn
 EXTENSION = topn
-EXTVERSIONS = 2.0.0 2.1.0 2.2.0 2.2.1
+EXTVERSIONS = 2.0.0 2.1.0 2.2.0 2.2.1 2.2.2 2.3.0
 DATA =	$(wildcard $(EXTENSION)--*--*.sql)
 DATA_built = $(foreach v,$(EXTVERSIONS),$(EXTENSION)--$(v).sql)
 
@@ -20,6 +20,10 @@ $(EXTENSION)--2.1.0.sql: $(EXTENSION)--2.0.0.sql $(EXTENSION)--2.0.0--2.1.0.sql
 $(EXTENSION)--2.2.0.sql: $(EXTENSION)--2.1.0.sql $(EXTENSION)--2.1.0--2.2.0.sql
 	cat $^ > $@
 $(EXTENSION)--2.2.1.sql: $(EXTENSION)--2.2.0.sql $(EXTENSION)--2.2.0--2.2.1.sql
+	cat $^ > $@
+$(EXTENSION)--2.2.2.sql: $(EXTENSION)--2.2.1.sql $(EXTENSION)--2.2.1--2.2.2.sql
+	cat $^ > $@
+$(EXTENSION)--2.3.0.sql: $(EXTENSION)--2.2.2.sql $(EXTENSION)--2.2.2--2.3.0.sql
 	cat $^ > $@
 
 EXTRA_CLEAN += -r $(RPM_BUILD_ROOT)
