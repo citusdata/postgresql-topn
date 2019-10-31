@@ -1,7 +1,7 @@
 sudo: required
 git:
   lfs_skip_smudge: true
-dist: trusty
+dist: bionic
 language: c
 branches:
   except: [ /^open-.*$/ ]
@@ -21,7 +21,6 @@ before_install:
 install:
   - install_uncrustify
   - install_pg
-  - install_custom_pg
 before_script:
   - citus_indent --quiet --check
   - config_and_start_cluster
