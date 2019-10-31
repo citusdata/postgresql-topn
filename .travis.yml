@@ -14,7 +14,7 @@ matrix:
     - env: PGVERSION=12
 before_install:
   - bash test_data_provider
-  - git clone -b v0.7.1 --depth 1 https://github.com/citusdata/tools.git
+  - git clone -b v0.7.13 --depth 1 https://github.com/citusdata/tools.git
   - sudo make -C tools install
   - setup_apt
   - nuke_pg
