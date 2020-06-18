@@ -1,3 +1,11 @@
+### topn v2.3.0 (October 31, 2019) ###
+
+* Adds PostgreSQL 12 support
+
+### topn v2.2.2 (December 21, 2018) ###
+
+* PG11 support is beautified
+
 ### topn v2.2.1 (December 12, 2018) ###
 
 * Version bump to 2.2.1
