@@ -3,6 +3,7 @@
 *.ko
 *.obj
 *.elf
+*.bc
 
 # Precompiled Headers
 *.gch
@@ -30,6 +31,12 @@
 # Debug files
 *.dSYM/
 
-#Temporary files
+# Temporary files
 *~
 copy_data.out
+
+# Generated migration scripts
+topn--?.?.?.sql
+
+# Sample data
+customer_reviews_????.csv
