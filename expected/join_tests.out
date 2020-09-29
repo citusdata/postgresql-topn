@@ -1,26 +1,26 @@
 -- Onder dreamed about these queries crashing
-SELECT
-    (topn(topn_add_agg(customer_id), 10)).*, (topn(topn_add_agg(product_id), 10)).*
-FROM
-    customer_reviews
-ORDER BY
-    2 DESC, 4 DESC, 1, 3;
-      item      | frequency |    item    | frequency 
-----------------+-----------+------------+-----------
- ATVPDKIKX0DER  |    331760 | 0743527550 |       576
- AGHIV0V0ON7MO  |       412 | 0613033205 |       576
- ACCH00DRABL57  |       210 | 0671014730 |       576
- A1EDOWER7RO6KZ |       184 | 0671003755 |       576
- A3HF6NQ541X7HW |       181 | 0871136791 |       560
- ALU2IJ2DZD86X  |       177 | 0679460691 |       560
- A84J7PUWOC138  |       172 | 0375700757 |       560
- A2FAGKHE7DRFXA |       151 | 0375402926 |       542
- A2JS2OU5SBH1XQ |       149 | 0613221583 |       531
- A3AZ4O4I9S4668 |       146 | 1590073991 |       531
+WITH cte (customer_item, customer_freq, product_item, product_freq) AS (
+	SELECT
+		(topn(topn_add_agg(customer_id), 10)).*, (topn(topn_add_agg(product_id), 10)).*
+	FROM
+		customer_reviews
+) SELECT customer_item, product_item FROM cte ORDER BY floor(customer_freq/10) desc, floor(product_freq/10) desc, customer_item, product_item;
+ customer_item  | product_item 
+----------------+--------------
+ ATVPDKIKX0DER  | 0743527550
+ AGHIV0V0ON7MO  | 0613033205
+ ACCH00DRABL57  | 0671014730
+ A1EDOWER7RO6KZ | 0671003755
+ A3HF6NQ541X7HW | 0871136791
+ A84J7PUWOC138  | 0375700757
+ ALU2IJ2DZD86X  | 0679460691
+ A2FAGKHE7DRFXA | 0375402926
+ A2JS2OU5SBH1XQ | 0613221583
+ A3AZ4O4I9S4668 | 1590073991
 (10 rows)
 
 SELECT
-    *
+    customers.product_category, customers.item, products.item
 FROM
     (SELECT
         product_category, (topn(topn_add_agg(customer_id), 10)).*
@@ -40,61 +40,63 @@ JOIN
 ON
     (customers.product_category = products.product_category)
 ORDER BY
-    3 DESC,6 DESC, 1, 2, 4, 5
+    floor(customers.frequency/10) DESC, floor(products.frequency/10) DESC, 1, 2, 3
 LIMIT
     20;
-   product_category   |     item      | frequency |   product_category   |    item    | frequency 
-----------------------+---------------+-----------+----------------------+------------+-----------
- Literature & Fiction | ATVPDKIKX0DER |     56898 | Literature & Fiction | 0613033205 |       578
- Literature & Fiction | ATVPDKIKX0DER |     56898 | Literature & Fiction | 0671003755 |       578
- Literature & Fiction | ATVPDKIKX0DER |     56898 | Literature & Fiction | 0671014730 |       578
- Literature & Fiction | ATVPDKIKX0DER |     56898 | Literature & Fiction | 0375700757 |       560
- Literature & Fiction | ATVPDKIKX0DER |     56898 | Literature & Fiction | 0679460691 |       560
- Literature & Fiction | ATVPDKIKX0DER |     56898 | Literature & Fiction | 0871136791 |       560
- Literature & Fiction | ATVPDKIKX0DER |     56898 | Literature & Fiction | 0613222407 |       526
- Literature & Fiction | ATVPDKIKX0DER |     56898 | Literature & Fiction | 0446605980 |       418
- Literature & Fiction | ATVPDKIKX0DER |     56898 | Literature & Fiction | 0385315236 |       400
- Literature & Fiction | ATVPDKIKX0DER |     56898 | Literature & Fiction | 0440222656 |       400
- Children's Books     | ATVPDKIKX0DER |     37233 | Children's Books     | 0881030392 |       220
- Children's Books     | ATVPDKIKX0DER |     37233 | Children's Books     | 0345413350 |       217
- Children's Books     | ATVPDKIKX0DER |     37233 | Children's Books     | 037582345X |       217
- Children's Books     | ATVPDKIKX0DER |     37233 | Children's Books     | 0440418321 |       217
- Children's Books     | ATVPDKIKX0DER |     37233 | Children's Books     | 0679879242 |       217
- Children's Books     | ATVPDKIKX0DER |     37233 | Children's Books     | 0679893105 |       217
- Children's Books     | ATVPDKIKX0DER |     37233 | Children's Books     | 0060281375 |       153
- Children's Books     | ATVPDKIKX0DER |     37233 | Children's Books     | 0064405370 |       153
- Children's Books     | ATVPDKIKX0DER |     37233 | Children's Books     | 0064409392 |       153
- Children's Books     | ATVPDKIKX0DER |     37233 | Children's Books     | 0066238501 |       153
+   product_category   |     item      |    item    
+----------------------+---------------+------------
+ Literature & Fiction | ATVPDKIKX0DER | 0613033205
+ Literature & Fiction | ATVPDKIKX0DER | 0671003755
+ Literature & Fiction | ATVPDKIKX0DER | 0671014730
+ Literature & Fiction | ATVPDKIKX0DER | 0375700757
+ Literature & Fiction | ATVPDKIKX0DER | 0679460691
+ Literature & Fiction | ATVPDKIKX0DER | 0871136791
+ Literature & Fiction | ATVPDKIKX0DER | 0613222407
+ Literature & Fiction | ATVPDKIKX0DER | 0446605980
+ Literature & Fiction | ATVPDKIKX0DER | 0385315236
+ Literature & Fiction | ATVPDKIKX0DER | 0440222656
+ Children's Books     | ATVPDKIKX0DER | 0881030392
+ Children's Books     | ATVPDKIKX0DER | 0345413350
+ Children's Books     | ATVPDKIKX0DER | 037582345X
+ Children's Books     | ATVPDKIKX0DER | 0440418321
+ Children's Books     | ATVPDKIKX0DER | 0679879242
+ Children's Books     | ATVPDKIKX0DER | 0679893105
+ Children's Books     | ATVPDKIKX0DER | 0060281375
+ Children's Books     | ATVPDKIKX0DER | 0064405370
+ Children's Books     | ATVPDKIKX0DER | 0064409392
+ Children's Books     | ATVPDKIKX0DER | 0066238501
 (20 rows)
 
+WITH cte (item, freq) AS (
 SELECT
-    (topn(topn_union(topn_union_agg(customers.topn_add_agg), topn_union_agg(products.topn_add_agg)), 15)).* 
-FROM 
-    (SELECT 
-        product_category, topn_add_agg(customer_id) 
-    FROM 
-        customer_reviews 
-    GROUP BY 
+    (topn(topn_union(topn_union_agg(customers.topn_add_agg), topn_union_agg(products.topn_add_agg)), 15)).*
+FROM
+    (SELECT
+        product_category, topn_add_agg(customer_id)
+    FROM
+        customer_reviews
+    GROUP BY
         1
-    ) customers 
-JOIN 
-    (SELECT 
-        product_category, topn_add_agg(product_id) 
-    FROM 
-        customer_reviews 
-    GROUP BY 
+    ) customers
+JOIN
+    (SELECT
+        product_category, topn_add_agg(product_id)
+    FROM
+        customer_reviews
+    GROUP BY
         1
-    ) products 
-ON true 
-ORDER BY 
+    ) products
+ON true)
+SELECT item, floor(freq/10) FROM cte
+ORDER BY
     2 DESC, 1
 LIMIT 5;
-     item      | frequency 
----------------+-----------
- ATVPDKIKX0DER |  27867840
- 0613033205    |     48552
- 0671003755    |     48552
- 0671014730    |     48552
- 0743527550    |     48552
+     item      |  floor  
+---------------+---------
+ ATVPDKIKX0DER | 2786784
+ 0613033205    |    4855
+ 0671003755    |    4855
+ 0671014730    |    4855
+ 0743527550    |    4855
 (5 rows)
 
