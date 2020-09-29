@@ -40,3 +40,12 @@ topn--?.?.?.sql
 
 # Sample data
 customer_reviews_????.csv
+
+# Build Artifacts
+.deps/
+data/customer_reviews_1998.csv
+results/
+sql/copy_data.sql
+regression.out
+regression.diffs
+/*.sql
