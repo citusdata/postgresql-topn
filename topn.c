@@ -17,8 +17,12 @@
 #include "access/hash.h"
 #include "access/htup_details.h"
 #include "catalog/pg_type.h"
+#if PG_VERSION_NUM >= 130000
+#include "common/jsonapi.h"
+#endif
 #include "funcapi.h"
 #include "lib/stringinfo.h"
+#include "mb/pg_wchar.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
 #include "utils/datum.h"
@@ -27,7 +31,9 @@
 
 #include "utils/json.h"
 #include "utils/jsonb.h"
+#if PG_VERSION_NUM < 130000
 #include "utils/jsonapi.h"
+#endif
 #include "utils/memutils.h"
 
 /* declarations for dynamic loading */
@@ -49,6 +55,15 @@ static int32 UnionFactor = 3;
 #define PG_GETARG_JSONB(int) PG_GETARG_JSONB_P(int)
 #define PG_RETURN_JSONB(jsonb) PG_RETURN_JSONB_P(jsonb)
 #endif
+
+#if PG_VERSION_NUM >= 130000
+#define makeJsonLexContextCstringLenCompat(json, len, encoding, need_escapes) \
+	makeJsonLexContextCstringLen(json, len, encoding, need_escapes);
+#else
+#define makeJsonLexContextCstringLenCompat(json, len, encoding, need_escapes) \
+	makeJsonLexContextCstringLen(json, len, need_escapes);
+#endif
+
 
 /* Taken from jsonb.c */
 #define JSONB_MAX_PAIRS (Min(MaxAllocSize / sizeof(JsonbPair), JB_CMASK))
@@ -1044,7 +1059,7 @@ jsonb_from_cstring(char *json, int len)
 
 	memset(&state, 0, sizeof(state));
 	memset(&sem, 0, sizeof(sem));
-	lex = makeJsonLexContextCstringLen(json, len, true);
+	lex = makeJsonLexContextCstringLenCompat(json, len, GetDatabaseEncoding(), true);
 
 	sem.semstate = (void *) &state;
 
