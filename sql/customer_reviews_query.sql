@@ -1,3 +1,6 @@
+SHOW server_version \gset
+SELECT substring(:'server_version', '\d+')::int >= 13;
+
 -- Create table to insert summaries.
 create table popular_products
 (

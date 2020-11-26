@@ -2,7 +2,7 @@ SHOW server_version \gset
 SELECT substring(:'server_version', '\d+')::int >= 13;
  ?column? 
 ----------
- t
+ f
 (1 row)
 
 -- Create table to insert summaries.
@@ -47,9 +47,9 @@ order by 2 DESC, 1;
  0671014730 |       572
  0743527550 |       572
  0375700757 |       555
- 0871136791 |       553
+ 0871136791 |       555
  0679460691 |       551
- 0375402926 |       548
+ 0375402926 |       550
  0613221583 |       536
  0812550293 |       536
  1575110458 |       536
