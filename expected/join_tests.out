@@ -1,24 +1,4 @@
 -- Onder dreamed about these queries crashing
-WITH cte (customer_item, customer_freq, product_item, product_freq) AS (
-	SELECT
-		(topn(topn_add_agg(customer_id), 10)).*, (topn(topn_add_agg(product_id), 10)).*
-	FROM
-		customer_reviews
-) SELECT customer_item, product_item FROM cte ORDER BY floor(customer_freq/10) desc, floor(product_freq/10) desc, customer_item, product_item;
- customer_item  | product_item 
-----------------+--------------
- ATVPDKIKX0DER  | 0743527550
- AGHIV0V0ON7MO  | 0613033205
- ACCH00DRABL57  | 0671014730
- A1EDOWER7RO6KZ | 0671003755
- A3HF6NQ541X7HW | 0871136791
- A84J7PUWOC138  | 0375700757
- ALU2IJ2DZD86X  | 0679460691
- A2FAGKHE7DRFXA | 0375402926
- A2JS2OU5SBH1XQ | 0613221583
- A3AZ4O4I9S4668 | 1590073991
-(10 rows)
-
 SELECT
     customers.product_category, customers.item, products.item
 FROM
