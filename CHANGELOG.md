@@ -1,3 +1,8 @@
+### topn v2.3.1 (November 27, 2020) ###
+
+* Adds PostgreSQL 13 support
+* Supports parallel queries and aggregates
+
 ### topn v2.3.0 (October 31, 2019) ###
 
 * Adds PostgreSQL 12 support
