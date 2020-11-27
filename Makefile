@@ -2,7 +2,7 @@
 
 MODULES = topn
 EXTENSION = topn
-EXTVERSIONS = 2.0.0 2.1.0 2.2.0 2.2.1 2.2.2 2.3.0
+EXTVERSIONS = 2.0.0 2.1.0 2.2.0 2.2.1 2.2.2 2.3.0 2.3.1
 DATA =	$(wildcard $(EXTENSION)--*--*.sql)
 DATA_built = $(foreach v,$(EXTVERSIONS),$(EXTENSION)--$(v).sql)
 PG_CONFIG ?= pg_config
