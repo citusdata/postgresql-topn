@@ -2,7 +2,7 @@
 
 MODULES = topn
 EXTENSION = topn
-EXTVERSIONS = 2.0.0 2.1.0 2.2.0 2.2.1 2.2.2 2.3.0 2.3.1
+EXTVERSIONS = 2.0.0 2.1.0 2.2.0 2.2.1 2.2.2 2.3.0 2.3.1 2.4.0
 DATA =	$(wildcard $(EXTENSION)--*--*.sql)
 DATA_built = $(foreach v,$(EXTVERSIONS),$(EXTENSION)--$(v).sql)
 PG_CONFIG ?= pg_config
@@ -31,6 +31,8 @@ $(EXTENSION)--2.2.2.sql: $(EXTENSION)--2.2.1.sql $(EXTENSION)--2.2.1--2.2.2.sql
 $(EXTENSION)--2.3.0.sql: $(EXTENSION)--2.2.2.sql $(EXTENSION)--2.2.2--2.3.0.sql
 	cat $^ > $@
 $(EXTENSION)--2.3.1.sql: $(EXTENSION)--2.3.0.sql $(EXTENSION)--2.3.0--2.3.1.sql
+	cat $^ > $@
+$(EXTENSION)--2.4.0.sql: $(EXTENSION)--2.3.1.sql $(EXTENSION)--2.3.1--2.4.0.sql
 	cat $^ > $@
 
 EXTRA_CLEAN += topn--*.sql -r $(RPM_BUILD_ROOT)
