@@ -36,7 +36,8 @@
 copy_data.out
 
 # Generated migration scripts
-topn--?.?.?.sql
+topn--*.sql
+!update/topn--*.sql
 
 # Sample data
 customer_reviews_????.csv

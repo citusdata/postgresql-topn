@@ -719,14 +719,20 @@ CreateTopnAggState(void)
 {
 	int32 hashTableSize = 0;
 	HASHCTL hashInfo;
+	int flags = HASH_ELEM | HASH_CONTEXT;
 
 	hashTableSize = (NumberOfCounters / 0.75) + 1;
 	memset(&hashInfo, 0, sizeof(hashInfo));
 	hashInfo.keysize = MAX_KEYSIZE;
 	hashInfo.entrysize = sizeof(FrequentTopnItem);
 	hashInfo.hcxt = CurrentMemoryContext;
+
+#if PG_VERSION_NUM >= 140000
+	flags |= HASH_STRINGS;
+#endif
+
 	return (TopnAggState *) hash_create("Item Frequency Map", hashTableSize, &hashInfo,
-										HASH_ELEM | HASH_CONTEXT);
+										flags);
 }
 
 
