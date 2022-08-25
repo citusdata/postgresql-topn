@@ -34,6 +34,8 @@ $(EXTENSION)--2.3.1.sql: $(EXTENSION)--2.3.0.sql $(EXTENSION)--2.3.0--2.3.1.sql
 	cat $^ > $@
 $(EXTENSION)--2.4.0.sql: $(EXTENSION)--2.3.1.sql $(EXTENSION)--2.3.1--2.4.0.sql
 	cat $^ > $@
+$(EXTENSION)--2.5.0.sql: $(EXTENSION)--2.4.0.sql $(EXTENSION)--2.4.0--2.5.0.sql
+	cat $^ > $@
 
 EXTRA_CLEAN += topn--*.sql -r $(RPM_BUILD_ROOT)
 
