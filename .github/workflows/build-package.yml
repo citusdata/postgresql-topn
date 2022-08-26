@@ -20,7 +20,7 @@ jobs:
           - 12
           - 13
           - 14
-          - 15
+          - 15beta3
 
     steps:
       - name: Checkout repository
