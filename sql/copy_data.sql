@@ -13,4 +13,5 @@ CREATE TABLE customer_reviews
     product_subcategory TEXT,
     similar_product_ids CHAR(10)[]
 );
-\COPY customer_reviews FROM 'data/customer_reviews_1998.csv' WITH CSV;
+
+\COPY customer_reviews FROM '@abs_srcdir@/data/customer_reviews_1998.csv' WITH CSV;
