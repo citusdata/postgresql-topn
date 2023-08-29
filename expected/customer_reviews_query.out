@@ -1,8 +1,14 @@
 SHOW server_version \gset
+SELECT substring(:'server_version', '\d+')::int >= 16;
+ ?column?
+----------
+ t
+(1 row)
+
 SELECT substring(:'server_version', '\d+')::int = 14;
  ?column? 
 ----------
- t
+ f
 (1 row)
 
 SELECT substring(:'server_version', '\d+')::int = 13;
@@ -52,9 +58,9 @@ order by 2 DESC, 1;
  0613033205 |       575
  0671014730 |       572
  0743527550 |       572
+ 0679460691 |       557
  0375700757 |       555
- 0871136791 |       555
- 0679460691 |       551
+ 0871136791 |       553
  0375402926 |       550
  0613221583 |       536
  0812550293 |       536

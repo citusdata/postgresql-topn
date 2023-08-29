@@ -8,7 +8,7 @@ SELECT substring(:'server_version', '\d+')::int >= 16;
 SELECT substring(:'server_version', '\d+')::int = 14;
  ?column? 
 ----------
- f
+ t
 (1 row)
 
 SELECT substring(:'server_version', '\d+')::int = 13;

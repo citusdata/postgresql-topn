@@ -1,4 +1,10 @@
 SHOW server_version \gset
+SELECT substring(:'server_version', '\d+')::int >= 16;
+ ?column?
+----------
+ f
+(1 row)
+
 SELECT substring(:'server_version', '\d+')::int = 14;
  ?column? 
 ----------
