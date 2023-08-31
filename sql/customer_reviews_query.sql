@@ -1,8 +1,3 @@
-SHOW server_version \gset
-SELECT substring(:'server_version', '\d+')::int >= 16;
-SELECT substring(:'server_version', '\d+')::int = 14;
-SELECT substring(:'server_version', '\d+')::int = 13;
-
 -- Create table to insert summaries.
 create table popular_products
 (
@@ -39,7 +34,7 @@ from
   popular_products;
 
 select
-  (topn(merged_summary, 20)).*
+  (topn(merged_summary, 4)).*
 from
   overall_result
 order by 2 DESC, 1;

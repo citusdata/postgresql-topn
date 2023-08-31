@@ -74,6 +74,14 @@ static int32 UnionFactor = 3;
 /* Taken from jsonb.h for PG version less than 10 */
 #define JsonContainerSize(jc) ((jc)->header & JB_CMASK)
 
+#if PG_VERSION_NUM < 160000
+#define JsonParseErrorType_compat void
+#define JSON_SUCCESS_COMPAT
+#else
+#define JsonParseErrorType_compat JsonParseErrorType
+#define JSON_SUCCESS_COMPAT JSON_SUCCESS
+#endif
+
 /* SQL Function definitions */
 PG_FUNCTION_INFO_V1(topn);
 PG_FUNCTION_INFO_V1(topn_add);
@@ -1016,71 +1024,47 @@ InsertPairs(FrequentTopnItem *item, StringInfo jsonbStr)
 
 /* *INDENT-OFF* */
 /* DISCLAIMER: COPY-PASTED FROM POSTGRES SOURCE CODE */
-#if PG_VERSION_NUM >= 160000
-static JsonParseErrorType
-#else
-static void
-#endif
+static JsonParseErrorType_compat
 jsonb_in_object_start(void *pstate)
 {
 	JsonbInState *_state = (JsonbInState *) pstate;
 
 	_state->res = pushJsonbValue(&_state->parseState, WJB_BEGIN_OBJECT, NULL);
-#if PG_VERSION_NUM >= 160000
-	return JSON_SUCCESS;
-#endif
+
+	return JSON_SUCCESS_COMPAT;
 }
 
-#if PG_VERSION_NUM >= 160000
-static JsonParseErrorType
-#else
-static void
-#endif
+static JsonParseErrorType_compat
 jsonb_in_object_end(void *pstate)
 {
 	JsonbInState *_state = (JsonbInState *) pstate;
 
 	_state->res = pushJsonbValue(&_state->parseState, WJB_END_OBJECT, NULL);
-#if PG_VERSION_NUM >= 160000
-	return JSON_SUCCESS;
-#endif
+
+	return JSON_SUCCESS_COMPAT;
 }
 
-#if PG_VERSION_NUM >= 160000
-static JsonParseErrorType
-#else
-static void
-#endif
+static JsonParseErrorType_compat
 jsonb_in_array_start(void *pstate)
 {
 	JsonbInState *_state = (JsonbInState *) pstate;
 
 	_state->res = pushJsonbValue(&_state->parseState, WJB_BEGIN_ARRAY, NULL);
-#if PG_VERSION_NUM >= 160000
-	return JSON_SUCCESS;
-#endif
+
+	return JSON_SUCCESS_COMPAT;
 }
 
-#if PG_VERSION_NUM >= 160000
-static JsonParseErrorType
-#else
-static void
-#endif
+static JsonParseErrorType_compat
 jsonb_in_array_end(void *pstate)
 {
 	JsonbInState *_state = (JsonbInState *) pstate;
 
 	_state->res = pushJsonbValue(&_state->parseState, WJB_END_ARRAY, NULL);
-#if PG_VERSION_NUM >= 160000
-	return JSON_SUCCESS;
-#endif
+
+	return JSON_SUCCESS_COMPAT;
 }
 
-#if PG_VERSION_NUM >= 160000
-static JsonParseErrorType
-#else
-static void
-#endif
+static JsonParseErrorType_compat
 jsonb_in_object_field_start(void *pstate, char *fname, bool isnull)
 {
 	JsonbInState *_state = (JsonbInState *) pstate;
@@ -1092,19 +1076,14 @@ jsonb_in_object_field_start(void *pstate, char *fname, bool isnull)
 	v.val.string.val = fname;
 
 	_state->res = pushJsonbValue(&_state->parseState, WJB_KEY, &v);
-#if PG_VERSION_NUM >= 160000
-	return JSON_SUCCESS;
-#endif
+
+	return JSON_SUCCESS_COMPAT;
 }
 
 /*
  * For jsonb we always want the de-escaped value - that's what's in token
  */
-#if PG_VERSION_NUM >= 160000
-static JsonParseErrorType
-#else
-static void
-#endif
+static JsonParseErrorType_compat
 jsonb_in_scalar(void *pstate, char *token, JsonTokenType tokentype)
 {
 	JsonbInState *_state = (JsonbInState *) pstate;
@@ -1178,9 +1157,8 @@ jsonb_in_scalar(void *pstate, char *token, JsonTokenType tokentype)
 				elog(ERROR, "unexpected parent of nested structure");
 		}
 	}
-#if PG_VERSION_NUM >= 160000
-	return JSON_SUCCESS;
-#endif
+
+	return JSON_SUCCESS_COMPAT;
 }
 
 
