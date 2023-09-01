@@ -1,4 +1,8 @@
+#!/bin/sh
+set -eu
+
 if [ ! -f ./data/customer_reviews_1998.csv ]; then
+    mkdir -p data
     cd ./data
     curl -L http://examples.citusdata.com/customer_reviews_1998.csv.gz > customer_reviews_1998.csv.gz
     gzip -d customer_reviews_1998.csv
