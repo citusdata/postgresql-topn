@@ -1,4 +1,8 @@
-### topn v2.4.0 (August 25, 2022) ###
+### topn v2.6.0 (September 01, 2023) ###
+
+* Adds PostgreSQL 16 support
+
+### topn v2.5.0 (August 25, 2022) ###
 
 * Adds PostgreSQL 15 support
 
