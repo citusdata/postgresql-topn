@@ -56,11 +56,14 @@ static int32 UnionFactor = 3;
 #define PG_RETURN_JSONB(jsonb) PG_RETURN_JSONB_P(jsonb)
 #endif
 
-#if PG_VERSION_NUM >= 130000
-#define makeJsonLexContextCstringLenCompat(json, len, encoding, need_escapes) \
+#if PG_VERSION_NUM >= 170000
+#define makeJsonLexContextCstringLenCompat(lex, json, len, encoding, need_escapes) \
+	makeJsonLexContextCstringLen(lex, json, len, encoding, need_escapes);
+#elif PG_VERSION_NUM >= 130000
+#define makeJsonLexContextCstringLenCompat(lex, json, len, encoding, need_escapes) \
 	makeJsonLexContextCstringLen(json, len, encoding, need_escapes);
 #else
-#define makeJsonLexContextCstringLenCompat(json, len, encoding, need_escapes) \
+#define makeJsonLexContextCstringLenCompat(lex, json, len, encoding, need_escapes) \
 	makeJsonLexContextCstringLen(json, len, need_escapes);
 #endif
 
@@ -1178,7 +1181,10 @@ jsonb_from_cstring(char *json, int len)
 
 	memset(&state, 0, sizeof(state));
 	memset(&sem, 0, sizeof(sem));
-	lex = makeJsonLexContextCstringLenCompat(json, len, GetDatabaseEncoding(), true);
+#if PG_VERSION_NUM >= 170000
+	lex = palloc0(sizeof(JsonLexContext));
+#endif
+	lex = makeJsonLexContextCstringLenCompat(lex, json, len, GetDatabaseEncoding(), true);
 
 	sem.semstate = (void *) &state;
 
