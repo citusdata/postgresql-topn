@@ -1175,15 +1175,12 @@ jsonb_in_scalar(void *pstate, char *token, JsonTokenType tokentype)
 static Jsonb *
 jsonb_from_cstring(char *json, int len)
 {
-	JsonLexContext *lex;
+	JsonLexContext *lex = NULL;
 	JsonbInState state;
 	JsonSemAction sem;
 
 	memset(&state, 0, sizeof(state));
 	memset(&sem, 0, sizeof(sem));
-#if PG_VERSION_NUM >= 170000
-	lex = palloc0(sizeof(JsonLexContext));
-#endif
 	lex = makeJsonLexContextCstringLenCompat(lex, json, len, GetDatabaseEncoding(), true);
 
 	sem.semstate = (void *) &state;
