@@ -116,6 +116,7 @@ typedef struct FrequentTopnItem
 	Frequency frequency;
 } FrequentTopnItem;
 
+#if PG_VERSION_NUM < 190000
 /*
  * This struct is used by internal Postgres function which are directly
  * COPY/PASTEd from the source code.
@@ -123,8 +124,16 @@ typedef struct FrequentTopnItem
 typedef struct JsonbInState
 {
 	JsonbParseState *parseState;
-	JsonbValue *res;
+	JsonbValue *result;
 } JsonbInState;
+static inline void
+topn_pushJsonbValue(JsonbInState *st, JsonbIteratorToken tok, JsonbValue *val)
+{
+	st->result = pushJsonbValue(&st->parseState, tok, val);
+}
+#else
+#define topn_pushJsonbValue(st, tok, jbv) pushJsonbValue(st, tok, jbv)
+#endif
 
 
 Datum topn(PG_FUNCTION_ARGS);
@@ -254,6 +263,9 @@ topn(PG_FUNCTION_ARGS)
 						   TEXTOID, -1, 0);
 		TupleDescInitEntry(tupleDescriptor, (AttrNumber) 2, "frequency",
 						   INT8OID, -1, 0);
+#if PG_VERSION_NUM >= 190000
+		TupleDescFinalize(tupleDescriptor);
+#endif
 		completeTupleDescriptor = BlessTupleDesc(tupleDescriptor);
 		functionCallContext->tuple_desc = completeTupleDescriptor;
 
@@ -1032,7 +1044,7 @@ jsonb_in_object_start(void *pstate)
 {
 	JsonbInState *_state = (JsonbInState *) pstate;
 
-	_state->res = pushJsonbValue(&_state->parseState, WJB_BEGIN_OBJECT, NULL);
+	topn_pushJsonbValue(_state, WJB_BEGIN_OBJECT, NULL);
 
 	return JSON_SUCCESS_COMPAT;
 }
@@ -1042,7 +1054,7 @@ jsonb_in_object_end(void *pstate)
 {
 	JsonbInState *_state = (JsonbInState *) pstate;
 
-	_state->res = pushJsonbValue(&_state->parseState, WJB_END_OBJECT, NULL);
+	topn_pushJsonbValue(_state, WJB_END_OBJECT, NULL);
 
 	return JSON_SUCCESS_COMPAT;
 }
@@ -1052,7 +1064,7 @@ jsonb_in_array_start(void *pstate)
 {
 	JsonbInState *_state = (JsonbInState *) pstate;
 
-	_state->res = pushJsonbValue(&_state->parseState, WJB_BEGIN_ARRAY, NULL);
+	topn_pushJsonbValue(_state, WJB_BEGIN_ARRAY, NULL);
 
 	return JSON_SUCCESS_COMPAT;
 }
@@ -1062,7 +1074,7 @@ jsonb_in_array_end(void *pstate)
 {
 	JsonbInState *_state = (JsonbInState *) pstate;
 
-	_state->res = pushJsonbValue(&_state->parseState, WJB_END_ARRAY, NULL);
+	topn_pushJsonbValue(_state, WJB_END_ARRAY, NULL);
 
 	return JSON_SUCCESS_COMPAT;
 }
@@ -1078,7 +1090,7 @@ jsonb_in_object_field_start(void *pstate, char *fname, bool isnull)
 	v.val.string.len = checkStringLen(strlen(fname));
 	v.val.string.val = fname;
 
-	_state->res = pushJsonbValue(&_state->parseState, WJB_KEY, &v);
+	topn_pushJsonbValue(_state, WJB_KEY, &v);
 
 	return JSON_SUCCESS_COMPAT;
 }
@@ -1140,9 +1152,9 @@ jsonb_in_scalar(void *pstate, char *token, JsonTokenType tokentype)
 		va.val.array.rawScalar = true;
 		va.val.array.nElems = 1;
 
-		_state->res = pushJsonbValue(&_state->parseState, WJB_BEGIN_ARRAY, &va);
-		_state->res = pushJsonbValue(&_state->parseState, WJB_ELEM, &v);
-		_state->res = pushJsonbValue(&_state->parseState, WJB_END_ARRAY, NULL);
+		topn_pushJsonbValue(_state, WJB_BEGIN_ARRAY, &va);
+		topn_pushJsonbValue(_state, WJB_ELEM, &v);
+		topn_pushJsonbValue(_state, WJB_END_ARRAY, NULL);
 	}
 	else
 	{
@@ -1151,10 +1163,10 @@ jsonb_in_scalar(void *pstate, char *token, JsonTokenType tokentype)
 		switch (o->type)
 		{
 			case jbvArray:
-				_state->res = pushJsonbValue(&_state->parseState, WJB_ELEM, &v);
+				topn_pushJsonbValue(_state, WJB_ELEM, &v);
 				break;
 			case jbvObject:
-				_state->res = pushJsonbValue(&_state->parseState, WJB_VALUE, &v);
+				topn_pushJsonbValue(_state, WJB_VALUE, &v);
 				break;
 			default:
 				elog(ERROR, "unexpected parent of nested structure");
@@ -1195,7 +1207,7 @@ jsonb_from_cstring(char *json, int len)
 	pg_parse_json(lex, &sem);
 
 	/* after parsing, the item member has the composed jsonb structure */
-	return JsonbValueToJsonb(state.res);
+	return JsonbValueToJsonb(state.result);
 }
 
 
