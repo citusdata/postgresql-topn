@@ -207,3 +207,14 @@ SELECT topn_add_agg(repeat('x', 256));
 SELECT * FROM topn('{"outer":{"a":1,"b":2}}'::jsonb, 1);
 SELECT topn_union('{"outer":{"a":1}}'::jsonb, '{}'::jsonb);
 SELECT * FROM topn('{}'::jsonb, -1);
+SELECT * FROM topn('{"negative":-1}'::jsonb, 1);
+SELECT * FROM topn('{"fractional":1.5}'::jsonb, 1);
+SELECT * FROM topn('{"too_large":9223372036854775808}'::jsonb, 1);
+SELECT frequency = 9223372036854775807 AS accepts_int64_max
+FROM topn('{"max":9223372036854775807}'::jsonb, 1);
+SELECT topn_union('{"negative":-1}'::jsonb, '{}'::jsonb);
+SELECT topn_union('{"fractional":1.5}'::jsonb, '{}'::jsonb);
+SELECT topn_union('{"too_large":9223372036854775808}'::jsonb, '{}'::jsonb);
+SELECT topn_union('{"max":9223372036854775807}'::jsonb, '{}'::jsonb) =
+	   '{"max":9223372036854775807}'::jsonb AS accepts_int64_max;
+-- End input boundary tests.

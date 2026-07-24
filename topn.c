@@ -161,6 +161,7 @@ static Jsonb * MaterializeAggStateToJsonb(TopnAggState *topn);
 static HTAB * topnHashtable(TopnAggState *topn);
 static void MergeTopn(TopnAggState *left, TopnAggState *right);
 static void IncreaseItemFrequency(FrequentTopnItem *item, Frequency amount);
+static Frequency FrequencyFromJsonbNumeric(Numeric numeric);
 static void ValidateTopnKeyLength(Size keyLength);
 static void InsertPairs(FrequentTopnItem *item, StringInfo jsonbStr);
 static Jsonb * jsonb_from_cstring(char *json, int len);
@@ -237,6 +238,7 @@ topn(PG_FUNCTION_ARGS)
 					 errmsg("topn input must be a JSONB object")));
 		}
 
+		/* Validate before the empty-object return and unsigned max_calls assignment. */
 		desiredNToPrint = PG_GETARG_INT32(1);
 		if (desiredNToPrint < 0)
 		{
@@ -712,7 +714,6 @@ FrequencyArrayFromJsonb(JsonbContainer *container)
 	JsonbIteratorToken jsonbIteratorToken;
 	JsonbValue itemJsonbValue;
 	JsonbIterator *iterator = NULL;
-	char *valueNumAsString = NULL;
 	Frequency frequencyValue = 0;
 
 	if (!JsonContainerIsObject(container))
@@ -733,6 +734,10 @@ FrequencyArrayFromJsonb(JsonbContainer *container)
 	topnArraySize = sizeof(FrequentTopnItem) * jsonbElementCount;
 	topnItemArray = (FrequentTopnItem *) palloc0(topnArraySize);
 
+	/*
+	 * The allocation is sized from root pairs, so do not recurse into nested
+	 * containers. They surface as non-numeric values and are rejected below.
+	 */
 	iterator = JsonbIteratorInit(container);
 	while ((jsonbIteratorToken = JsonbIteratorNext(&iterator, &itemJsonbValue, true)) !=
 		   WJB_DONE)
@@ -761,8 +766,7 @@ FrequencyArrayFromJsonb(JsonbContainer *container)
 						 errmsg("topn JSONB object contains more elements than expected")));
 			}
 
-			valueNumAsString = numeric_normalize(itemJsonbValue.val.numeric);
-			frequencyValue = atol(valueNumAsString);
+			frequencyValue = FrequencyFromJsonbNumeric(itemJsonbValue.val.numeric);
 			memcpy(topnItemArray[topnIndex].key, key->data, key->len);
 			topnItemArray[topnIndex].frequency = frequencyValue;
 
@@ -809,7 +813,6 @@ MergeJsonbIntoTopnAggState(Jsonb *jsonb, TopnAggState *topn)
 	JsonbIterator *iterator = NULL;
 	JsonbIteratorToken jsonbIteratorToken;
 	JsonbValue itemJsonbValue;
-	char *valueNumAsString = NULL;
 	StringInfo key = makeStringInfo();
 	Frequency frequencyValue = 0;
 	bool found = false;
@@ -822,6 +825,7 @@ MergeJsonbIntoTopnAggState(Jsonb *jsonb, TopnAggState *topn)
 				 errmsg("topn input must be a JSONB object")));
 	}
 
+	/* TopN state is a flat numeric object; nested containers are invalid values. */
 	iterator = JsonbIteratorInit(container);
 	while ((jsonbIteratorToken = JsonbIteratorNext(&iterator, &itemJsonbValue, true)) !=
 		   WJB_DONE)
@@ -846,8 +850,7 @@ MergeJsonbIntoTopnAggState(Jsonb *jsonb, TopnAggState *topn)
 				int sizeOfHashTable = 0;
 				int remainingElements = 0;
 				int itemLimit = 0;
-				valueNumAsString = numeric_normalize(itemJsonbValue.val.numeric);
-				frequencyValue = atol(valueNumAsString);
+				frequencyValue = FrequencyFromJsonbNumeric(itemJsonbValue.val.numeric);
 
 				item = hash_search(topnHashtable(topn), (void *) key->data,
 								   HASH_ENTER, &found);
@@ -871,7 +874,45 @@ MergeJsonbIntoTopnAggState(Jsonb *jsonb, TopnAggState *topn)
 
 
 /*
- * Validate that a key fits in FrequentTopnItem with a trailing null byte.
+ * Convert a JSONB numeric without allowing numeric_int8() to round fractions.
+ */
+static Frequency
+FrequencyFromJsonbNumeric(Numeric numeric)
+{
+	char *frequencyString = numeric_normalize(numeric);
+	char *currentCharacter = frequencyString;
+	Frequency frequency = 0;
+
+	while (*currentCharacter != '\0')
+	{
+		int digit = *currentCharacter - '0';
+
+		if (*currentCharacter < '0' || *currentCharacter > '9')
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("topn frequencies must be non-negative integers")));
+		}
+
+		if (frequency > (MAX_FREQUENCY - digit) / 10)
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+					 errmsg("topn frequency must not exceed 9223372036854775807")));
+		}
+
+		frequency = frequency * 10 + digit;
+		currentCharacter++;
+	}
+
+	pfree(frequencyString);
+
+	return frequency;
+}
+
+
+/*
+ * MAX_KEYSIZE includes the trailing null byte, leaving 255 bytes for key data.
  */
 static void
 ValidateTopnKeyLength(Size keyLength)
