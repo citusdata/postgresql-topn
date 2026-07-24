@@ -1,3 +1,12 @@
+### topn v2.7.1 (July 24, 2026) ###
+
+* Fixes memory-safety issues when parsing TopN JSONB values.
+* Enforces a 255-byte key limit: 256-byte JSONB keys and text keys of 256 bytes
+  or more now error instead of being accepted or silently truncated.
+* Rejects non-object JSONB inputs and objects with non-numeric values.
+* Rejects negative, fractional, and out-of-range frequency values.
+* Rejects negative requested counter counts, including for empty JSONB objects.
+
 ### topn v2.7.0 (October 18, 2024) ###
 
 * Adds PostgreSQL 17 support
