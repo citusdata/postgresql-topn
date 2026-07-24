@@ -77,6 +77,10 @@ static int32 UnionFactor = 3;
 /* Taken from jsonb.h for PG version less than 10 */
 #define JsonContainerSize(jc) ((jc)->header & JB_CMASK)
 
+#if PG_VERSION_NUM < 100000
+#define JsonContainerIsObject(jc) (((jc)->header & JB_FOBJECT) != 0)
+#endif
+
 #if PG_VERSION_NUM < 160000
 #define JsonParseErrorType_compat void
 #define JSON_SUCCESS_COMPAT
@@ -157,6 +161,7 @@ static Jsonb * MaterializeAggStateToJsonb(TopnAggState *topn);
 static HTAB * topnHashtable(TopnAggState *topn);
 static void MergeTopn(TopnAggState *left, TopnAggState *right);
 static void IncreaseItemFrequency(FrequentTopnItem *item, Frequency amount);
+static void ValidateTopnKeyLength(Size keyLength);
 static void InsertPairs(FrequentTopnItem *item, StringInfo jsonbStr);
 static Jsonb * jsonb_from_cstring(char *json, int len);
 static size_t checkStringLen(size_t len);
@@ -225,6 +230,26 @@ topn(PG_FUNCTION_ARGS)
 		jsonb = PG_GETARG_JSONB(0);
 		container = &jsonb->root;
 
+		if (!JsonContainerIsObject(container))
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_DATA_EXCEPTION),
+					 errmsg("topn input must be a JSONB object")));
+		}
+
+		desiredNToPrint = PG_GETARG_INT32(1);
+		if (desiredNToPrint < 0)
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("desired number of counters must not be negative")));
+		}
+		else if (desiredNToPrint > NumberOfCounters)
+		{
+			ereport(ERROR, (errmsg("desired number of counters is higher than the "
+								   "topn.number_of_counters variable")));
+		}
+
 		jsonbElementCount = JsonContainerSize(container);
 
 		/* if there is not any element in the array just return */
@@ -234,12 +259,6 @@ topn(PG_FUNCTION_ARGS)
 			SRF_RETURN_DONE(functionCallContext);
 		}
 
-		desiredNToPrint = PG_GETARG_INT32(1);
-		if (desiredNToPrint > NumberOfCounters)
-		{
-			ereport(ERROR, (errmsg("desired number of counters is higher than the "
-								   "topn.number_of_counters variable")));
-		}
 		itemCountToPrint = Min(desiredNToPrint, jsonbElementCount);
 		functionCallContext->max_calls = itemCountToPrint;
 
@@ -347,6 +366,7 @@ topn_add(PG_FUNCTION_ARGS)
 	MergeJsonbIntoTopnAggState(jsonb, stateTopn);
 
 	itemText = PG_GETARG_TEXT_P(1);
+	ValidateTopnKeyLength(VARSIZE_ANY_EXHDR(itemText));
 	text_to_cstring_buffer(itemText, itemString, MAX_KEYSIZE);
 
 	item = hash_search(topnHashtable(stateTopn), (void *) itemString,
@@ -442,6 +462,7 @@ topn_add_trans(PG_FUNCTION_ARGS)
 
 	textInput = PG_GETARG_TEXT_P(1);
 
+	ValidateTopnKeyLength(VARSIZE_ANY_EXHDR(textInput));
 	text_to_cstring_buffer(textInput, charInput, MAX_KEYSIZE);
 	item = hash_search(topnHashtable(topnTrans), (void *) charInput, HASH_ENTER, &found);
 	if (found)
@@ -694,12 +715,26 @@ FrequencyArrayFromJsonb(JsonbContainer *container)
 	char *valueNumAsString = NULL;
 	Frequency frequencyValue = 0;
 
+	if (!JsonContainerIsObject(container))
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_DATA_EXCEPTION),
+				 errmsg("topn input must be a JSONB object")));
+	}
+
 	jsonbElementCount = JsonContainerSize(container);
+	if ((Size) jsonbElementCount > MaxAllocSize / sizeof(FrequentTopnItem))
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+				 errmsg("topn JSONB object contains too many elements")));
+	}
+
 	topnArraySize = sizeof(FrequentTopnItem) * jsonbElementCount;
 	topnItemArray = (FrequentTopnItem *) palloc0(topnArraySize);
 
 	iterator = JsonbIteratorInit(container);
-	while ((jsonbIteratorToken = JsonbIteratorNext(&iterator, &itemJsonbValue, false)) !=
+	while ((jsonbIteratorToken = JsonbIteratorNext(&iterator, &itemJsonbValue, true)) !=
 		   WJB_DONE)
 	{
 		if (jsonbIteratorToken == WJB_KEY && itemJsonbValue.type == jbvString)
@@ -709,24 +744,29 @@ FrequencyArrayFromJsonb(JsonbContainer *container)
 			appendBinaryStringInfo(key, itemJsonbValue.val.string.val,
 								   itemJsonbValue.val.string.len);
 
-			if (key->len > MAX_KEYSIZE)
+			ValidateTopnKeyLength(key->len);
+
+			jsonbIteratorToken = JsonbIteratorNext(&iterator, &itemJsonbValue, true);
+			if (jsonbIteratorToken != WJB_VALUE || itemJsonbValue.type != jbvNumeric)
 			{
 				ereport(ERROR,
 						(errcode(ERRCODE_DATA_EXCEPTION),
-						 errmsg("this jsonb object includes a key which is longer than "
-								"allowed topn key size (256 bytes)")));
+						 errmsg("topn JSONB values must be numeric")));
 			}
 
-			jsonbIteratorToken = JsonbIteratorNext(&iterator, &itemJsonbValue, false);
-			if (jsonbIteratorToken == WJB_VALUE && itemJsonbValue.type == jbvNumeric)
+			if (topnIndex >= jsonbElementCount)
 			{
-				valueNumAsString = numeric_normalize(itemJsonbValue.val.numeric);
-				frequencyValue = atol(valueNumAsString);
-				memcpy(topnItemArray[topnIndex].key, key->data, key->len);
-				topnItemArray[topnIndex].frequency = frequencyValue;
-
-				topnIndex++;
+				ereport(ERROR,
+						(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+						 errmsg("topn JSONB object contains more elements than expected")));
 			}
+
+			valueNumAsString = numeric_normalize(itemJsonbValue.val.numeric);
+			frequencyValue = atol(valueNumAsString);
+			memcpy(topnItemArray[topnIndex].key, key->data, key->len);
+			topnItemArray[topnIndex].frequency = frequencyValue;
+
+			topnIndex++;
 		}
 	}
 
@@ -766,7 +806,7 @@ static void
 MergeJsonbIntoTopnAggState(Jsonb *jsonb, TopnAggState *topn)
 {
 	JsonbContainer *container = &jsonb->root;
-	JsonbIterator *iterator = JsonbIteratorInit(container);
+	JsonbIterator *iterator = NULL;
 	JsonbIteratorToken jsonbIteratorToken;
 	JsonbValue itemJsonbValue;
 	char *valueNumAsString = NULL;
@@ -775,7 +815,15 @@ MergeJsonbIntoTopnAggState(Jsonb *jsonb, TopnAggState *topn)
 	bool found = false;
 	FrequentTopnItem *item = NULL;
 
-	while ((jsonbIteratorToken = JsonbIteratorNext(&iterator, &itemJsonbValue, false)) !=
+	if (!JsonContainerIsObject(container))
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_DATA_EXCEPTION),
+				 errmsg("topn input must be a JSONB object")));
+	}
+
+	iterator = JsonbIteratorInit(container);
+	while ((jsonbIteratorToken = JsonbIteratorNext(&iterator, &itemJsonbValue, true)) !=
 		   WJB_DONE)
 	{
 		if (jsonbIteratorToken == WJB_KEY && itemJsonbValue.type == jbvString)
@@ -784,16 +832,16 @@ MergeJsonbIntoTopnAggState(Jsonb *jsonb, TopnAggState *topn)
 			key = makeStringInfo();
 			appendBinaryStringInfo(key, itemJsonbValue.val.string.val,
 								   itemJsonbValue.val.string.len);
-			if (key->len > MAX_KEYSIZE)
+			ValidateTopnKeyLength(key->len);
+
+			jsonbIteratorToken = JsonbIteratorNext(&iterator, &itemJsonbValue, true);
+			if (jsonbIteratorToken != WJB_VALUE || itemJsonbValue.type != jbvNumeric)
 			{
 				ereport(ERROR,
 						(errcode(ERRCODE_DATA_EXCEPTION),
-						 errmsg("this jsonb object includes a key which is longer than "
-								"allowed topn key size (256 bytes)")));
+						 errmsg("topn JSONB values must be numeric")));
 			}
 
-			jsonbIteratorToken = JsonbIteratorNext(&iterator, &itemJsonbValue, false);
-			if (jsonbIteratorToken == WJB_VALUE && itemJsonbValue.type == jbvNumeric)
 			{
 				int sizeOfHashTable = 0;
 				int remainingElements = 0;
@@ -818,6 +866,21 @@ MergeJsonbIntoTopnAggState(Jsonb *jsonb, TopnAggState *topn)
 				PruneHashTable(topnHashtable(topn), itemLimit, remainingElements);
 			}
 		}
+	}
+}
+
+
+/*
+ * Validate that a key fits in FrequentTopnItem with a trailing null byte.
+ */
+static void
+ValidateTopnKeyLength(Size keyLength)
+{
+	if (keyLength >= MAX_KEYSIZE)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_DATA_EXCEPTION),
+				 errmsg("topn key must not exceed %d bytes", MAX_KEYSIZE - 1)));
 	}
 }
 

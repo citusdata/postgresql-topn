@@ -197,3 +197,13 @@ FROM values_table;
 
 SELECT (topn(topn_union_agg(jsonb_column),100)).* 
 FROM jsonb_table;
+
+-- Validate topn input boundaries.
+SELECT length(item), frequency
+FROM topn(jsonb_build_object(repeat('x', 255), 1), 1);
+SELECT * FROM topn(jsonb_build_object(repeat('x', 256), 1), 1);
+SELECT topn_add(NULL, repeat('x', 256));
+SELECT topn_add_agg(repeat('x', 256));
+SELECT * FROM topn('{"outer":{"a":1,"b":2}}'::jsonb, 1);
+SELECT topn_union('{"outer":{"a":1}}'::jsonb, '{}'::jsonb);
+SELECT * FROM topn('{}'::jsonb, -1);
