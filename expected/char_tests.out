@@ -266,3 +266,50 @@ FROM jsonb_table;
  \x08\x0C        \'"                       |         2
 (22 rows)
 
+-- Validate topn input boundaries.
+SELECT length(item), frequency
+FROM topn(jsonb_build_object(repeat('x', 255), 1), 1);
+ length | frequency 
+--------+-----------
+    255 |         1
+(1 row)
+
+SELECT * FROM topn(jsonb_build_object(repeat('x', 256), 1), 1);
+ERROR:  topn key must not exceed 255 bytes
+SELECT topn_add(NULL, repeat('x', 256));
+ERROR:  topn key must not exceed 255 bytes
+SELECT topn_add_agg(repeat('x', 256));
+ERROR:  topn key must not exceed 255 bytes
+SELECT * FROM topn('{"outer":{"a":1,"b":2}}'::jsonb, 1);
+ERROR:  topn JSONB values must be numeric
+SELECT topn_union('{"outer":{"a":1}}'::jsonb, '{}'::jsonb);
+ERROR:  topn JSONB values must be numeric
+SELECT * FROM topn('{}'::jsonb, -1);
+ERROR:  desired number of counters must not be negative
+SELECT * FROM topn('{"negative":-1}'::jsonb, 1);
+ERROR:  topn frequencies must be non-negative integers
+SELECT * FROM topn('{"fractional":1.5}'::jsonb, 1);
+ERROR:  topn frequencies must be non-negative integers
+SELECT * FROM topn('{"too_large":9223372036854775808}'::jsonb, 1);
+ERROR:  topn frequency must not exceed 9223372036854775807
+SELECT frequency = 9223372036854775807 AS accepts_int64_max
+FROM topn('{"max":9223372036854775807}'::jsonb, 1);
+ accepts_int64_max 
+-------------------
+ t
+(1 row)
+
+SELECT topn_union('{"negative":-1}'::jsonb, '{}'::jsonb);
+ERROR:  topn frequencies must be non-negative integers
+SELECT topn_union('{"fractional":1.5}'::jsonb, '{}'::jsonb);
+ERROR:  topn frequencies must be non-negative integers
+SELECT topn_union('{"too_large":9223372036854775808}'::jsonb, '{}'::jsonb);
+ERROR:  topn frequency must not exceed 9223372036854775807
+SELECT topn_union('{"max":9223372036854775807}'::jsonb, '{}'::jsonb) =
+	   '{"max":9223372036854775807}'::jsonb AS accepts_int64_max;
+ accepts_int64_max 
+-------------------
+ t
+(1 row)
+
+-- End input boundary tests.
