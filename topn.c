@@ -50,6 +50,7 @@ static int32 NumberOfCounters = 1000;
 static int32 UnionFactor = 3;
 #define MAX_KEYSIZE 256
 #define MAX_FREQUENCY INT64_MAX
+#define FREQUENCY_DECIMAL_BASE 10
 
 #if PG_VERSION_NUM >= 110000
 #define PG_GETARG_JSONB(int) PG_GETARG_JSONB_P(int)
@@ -894,14 +895,15 @@ FrequencyFromJsonbNumeric(Numeric numeric)
 					 errmsg("topn frequencies must be non-negative integers")));
 		}
 
-		if (frequency > (MAX_FREQUENCY - digit) / 10)
+		if (frequency > (MAX_FREQUENCY - digit) / FREQUENCY_DECIMAL_BASE)
 		{
 			ereport(ERROR,
 					(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-					 errmsg("topn frequency must not exceed 9223372036854775807")));
+					 errmsg("topn frequency must not exceed " INT64_FORMAT,
+							MAX_FREQUENCY)));
 		}
 
-		frequency = frequency * 10 + digit;
+		frequency = frequency * FREQUENCY_DECIMAL_BASE + digit;
 		currentCharacter++;
 	}
 
@@ -912,7 +914,7 @@ FrequencyFromJsonbNumeric(Numeric numeric)
 
 
 /*
- * MAX_KEYSIZE includes the trailing null byte, leaving 255 bytes for key data.
+ * MAX_KEYSIZE includes the trailing null byte.
  */
 static void
 ValidateTopnKeyLength(Size keyLength)
